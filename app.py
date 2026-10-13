@@ -187,52 +187,23 @@ def style_chart(fig):
 # BRAND HEADER
 # =========================================================
 
-# BRAND HEADER
-st.markdown("""
-<div style="
-    background: linear-gradient(120deg, #111A2B, #172338);
-    border: 1px solid #26344A;
-    border-radius: 20px;
-    padding: 30px 32px;
-    margin-bottom: 28px;
-">
-    <div style="
-        color: #B7FF3C;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 3px;
-        margin-bottom: 12px;
-    ">
-        MARKETPULSE / MARKETING INTELLIGENCE
+st.markdown(
+    """
+    <div style="background-color:#111A2B; border:1px solid #26344A; border-radius:20px; padding:30px 32px; margin-bottom:28px;">
+        <div style="color:#B7FF3C; font-size:12px; font-weight:800; letter-spacing:3px; margin-bottom:12px;">
+            MARKETPULSE / MARKETING INTELLIGENCE
+        </div>
+        <h1 style="color:#F2F5FA; font-size:36px; font-weight:800; margin:0 0 12px 0;">
+            Turn campaign data into <span style="color:#B7FF3C;">growth.</span>
+        </h1>
+        <p style="color:#98A6BA; font-size:15px; line-height:1.7; max-width:700px;">
+            Understand performance, discover opportunities, and make
+            smarter marketing budget decisions — all in one place.
+        </p>
     </div>
-
-    <div style="
-        color: #F2F5FA;
-        font-size: 36px;
-        font-weight: 800;
-        letter-spacing: -1.2px;
-        line-height: 1.2;
-        margin-bottom: 12px;
-    ">
-        Turn campaign data into
-        <span style="color:#B7FF3C;">growth.</span>
-    </div>
-
-    <div style="
-        color: #98A6BA;
-        font-size: 15px;
-        line-height: 1.7;
-        max-width: 700px;
-    ">
-        Understand performance, discover opportunities, and make
-        smarter marketing budget decisions — all in one place.
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-        
-        
-            
+    """,
+    unsafe_allow_html=True
+)
 
 
 # =========================================================
