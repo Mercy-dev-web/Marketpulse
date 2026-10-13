@@ -542,6 +542,15 @@ st.write(
 )
 
 # Find a date column
+
+# FutureCast: Channel-Specific Revenue Forecast
+st.divider()
+st.header("🔮 FutureCast")
+st.write(
+    "Explore a seven-day revenue outlook for your chosen "
+    "sales channel using its historical revenue trend."
+)
+
 date_candidates = [
     "date", "campaign_date", "day",
     "campaign_day", "order_date", "transaction_date"
@@ -563,28 +572,174 @@ if date_column is None:
 
 if date_column is None:
     st.warning(
-        "FutureCast needs a date column. Include a column "
-        "such as Date or Campaign Date in your uploaded data."
+        "FutureCast needs a date column, such as Date "
+        "or Campaign Date."
     )
+
+elif "channel" not in df.columns:
+    st.warning(
+        "Channel-specific forecasting needs a Channel column. "
+        "Add one identifying each campaign's channel, such as "
+        "Instagram, WhatsApp, Facebook or TikTok."
+    )
+
 else:
-    forecast_data = df[[date_column, "revenue"]].copy()
+    forecast_data = df[
+        [date_column, "channel", "revenue"]
+    ].copy()
+
     forecast_data[date_column] = pd.to_datetime(
         forecast_data[date_column], errors="coerce"
     )
     forecast_data["revenue"] = pd.to_numeric(
         forecast_data["revenue"], errors="coerce"
     )
+    forecast_data["channel"] = (
+        forecast_data["channel"].astype("string").str.strip()
+    )
 
     forecast_data = forecast_data.dropna(
-        subset=[date_column, "revenue"]
+        subset=[date_column, "channel", "revenue"]
     )
+    forecast_data = forecast_data[
+        forecast_data["channel"] != ""
+    ]
 
     if forecast_data.empty:
         st.warning(
-            "No valid dates and revenue values were found. "
-            "Check the date format in your file."
+            "No valid dates, channel names and revenue values "
+            "were found in your file."
         )
     else:
+        channels = sorted(
+            forecast_data["channel"].unique().tolist()
+        )
+
+        selected_channel = st.selectbox(
+            "Choose a channel to forecast",
+            channels,
+            key="futurecast_channel"
+        )
+
+        channel_history = forecast_data[
+            forecast_data["channel"] == selected_channel
+        ]
+
+        daily = (
+            channel_history
+            .groupby(date_column)["revenue"]
+            .sum()
+            .sort_index()
+            .resample("D")
+            .sum()
+        )
+
+        if len(daily) < 3:
+            st.warning(
+                f"{selected_channel} needs at least three "
+                "distinct days of historical data. Choose "
+                "another channel or upload more history."
+            )
+        else:
+            st.caption(
+                f"Historical period: {daily.index.min():%d %b %Y} "
+                f"to {daily.index.max():%d %b %Y}"
+            )
+
+            x = (
+                daily.index - daily.index.min()
+            ).days.to_numpy(dtype=float)
+            y = daily.to_numpy(dtype=float)
+
+            slope, intercept = np.polyfit(x, y, 1)
+
+            future_dates = pd.date_range(
+                start=daily.index.max() + pd.Timedelta(days=1),
+                periods=7,
+                freq="D"
+            )
+
+            future_x = (
+                future_dates - daily.index.min()
+            ).days.to_numpy(dtype=float)
+
+            expected = np.maximum(
+                slope * future_x + intercept, 0
+            )
+            cautious = expected * 0.85
+            optimistic = expected * 1.15
+
+            st.subheader(
+                f"{selected_channel}: Next Seven Days"
+            )
+
+            a, b, c = st.columns(3)
+            a.metric(
+                "Cautious Scenario",
+                f"₦{cautious.sum():,.0f}"
+            )
+            b.metric(
+                "Trend Estimate",
+                f"₦{expected.sum():,.0f}"
+            )
+            c.metric(
+                "Optimistic Scenario",
+                f"₦{optimistic.sum():,.0f}"
+            )
+
+            historical_plot = pd.DataFrame({
+                "Date": daily.index,
+                "Revenue": daily.values,
+                "Series": "Historical revenue"
+            })
+
+            forecast_plot = pd.DataFrame({
+                "Date": future_dates,
+                "Revenue": expected,
+                "Series": "Trend estimate"
+            })
+
+            chart_data = pd.concat(
+                [historical_plot, forecast_plot],
+                ignore_index=True
+            )
+
+            fig = px.line(
+                chart_data,
+                x="Date",
+                y="Revenue",
+                color="Series",
+                markers=True,
+                title=f"{selected_channel} Revenue Outlook"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+            forecast_table = pd.DataFrame({
+                "Date": future_dates.strftime("%d %b %Y"),
+                "Cautious": cautious,
+                "Expected": expected,
+                "Optimistic": optimistic
+            })
+
+            st.subheader("Daily Forecast")
+            st.dataframe(
+                forecast_table.round(2),
+                use_container_width=True
+            )
+
+            st.caption(
+                "Method: linear trend fitted to this channel's "
+                "daily historical revenue. Scenario values use "
+                "illustrative ±15% adjustments, not statistical "
+                "confidence intervals. Seasonality, changing "
+                "budgets and market conditions are not modeled. "
+                "These estimates are not guarantees."
+            )
+
         # Combine campaign revenue recorded on the same date
         daily = (
             forecast_data
