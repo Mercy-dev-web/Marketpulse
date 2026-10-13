@@ -9,6 +9,131 @@ st.set_page_config(
     layout="wide"
 )
 
+
+# MARKETPULSE — DARK INTELLIGENCE DESIGN SYSTEM
+st.markdown("""
+<style>
+    :root {
+        --mp-bg: #080D18;
+        --mp-panel: #111A2B;
+        --mp-panel-hover: #172338;
+        --mp-green: #B7FF3C;
+        --mp-text: #F2F5FA;
+        --mp-muted: #98A6BA;
+        --mp-border: #26344A;
+    }
+
+    .stApp {
+        background: var(--mp-bg);
+        color: var(--mp-text);
+    }
+
+    [data-testid="stHeader"] {
+        background: rgba(8, 13, 24, 0.92);
+    }
+
+    [data-testid="stSidebar"] {
+        background: #0D1525;
+        border-right: 1px solid var(--mp-border);
+    }
+
+    [data-testid="stSidebar"] * {
+        color: var(--mp-text);
+    }
+
+    .block-container {
+        max-width: 1500px;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+    }
+
+    h1, h2, h3 {
+        color: var(--mp-text) !important;
+        letter-spacing: -0.025em;
+    }
+
+    p, label, .stCaption {
+        color: var(--mp-muted);
+    }
+
+    [data-testid="stMetric"] {
+        background: var(--mp-panel);
+        border: 1px solid var(--mp-border);
+        border-radius: 16px;
+        padding: 20px 22px;
+        min-height: 115px;
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: var(--mp-muted) !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--mp-green) !important;
+        font-weight: 700;
+    }
+
+    [data-testid="stMetricDelta"] {
+        font-size: 0.85rem;
+    }
+
+    div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="stAlert"]) {
+        border-radius: 12px;
+    }
+
+    .stButton > button,
+    .stDownloadButton > button {
+        background: var(--mp-green);
+        color: #101827;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        padding: 0.6rem 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover {
+        background: #D0FF7A;
+        color: #080D18;
+        border: none;
+    }
+
+    [data-testid="stFileUploader"] {
+        background: var(--mp-panel);
+        border: 1px dashed #52647E;
+        border-radius: 14px;
+        padding: 12px;
+    }
+
+    [data-testid="stDataFrame"],
+    [data-testid="stTable"] {
+        border: 1px solid var(--mp-border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    hr {
+        border-color: var(--mp-border);
+    }
+
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="input"] > div {
+        background: var(--mp-panel);
+        border-color: var(--mp-border);
+        border-radius: 10px;
+    }
+
+    [data-testid="stPlotlyChart"] {
+        background: var(--mp-panel);
+        border: 1px solid var(--mp-border);
+        border-radius: 16px;
+        padding: 8px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
 st.title("📊 MarketPulse")
 st.caption("Marketing intelligence for smarter business decisions.")
 
