@@ -198,11 +198,93 @@ st.dataframe(
     use_container_width=True
 )
 
-best = df.loc[df["ROAS"].idxmax()]
-st.success(
-    f"Top campaign by ROAS: {best['campaign']} "
-    f"({best['ROAS']:.2f}x)"
+
+# Smart Marketing Insights
+st.divider()
+st.header("🧠 Smart Marketing Insights")
+st.write(
+    "MarketPulse examines your campaign performance "
+    "and highlights opportunities for improvement."
 )
+
+# 1. Best-performing campaign by ROAS
+best = df.loc[df["ROAS"].idxmax()]
+
+st.subheader("🏆 Strongest Return on Ad Spend")
+st.success(
+    f"**{best['campaign']}** has the highest ROAS "
+    f"at **{best['ROAS']:.2f}x**. "
+    "Study what makes this campaign effective before "
+    "considering a budget increase."
+)
+
+# 2. Campaign with the highest cost per conversion
+valid_costs = df.dropna(subset=["Cost per Conversion"])
+valid_costs = valid_costs[
+    valid_costs["conversions"] > 0
+]
+
+if not valid_costs.empty:
+    costly = valid_costs.loc[
+        valid_costs["Cost per Conversion"].idxmax()
+    ]
+
+    st.subheader("💸 Cost Improvement Opportunity")
+    st.warning(
+        f"**{costly['campaign']}** has the highest "
+        f"cost per conversion at "
+        f"{costly['Cost per Conversion']:,.2f}. "
+        "Review its targeting, creative and conversion "
+        "journey to identify possible improvements."
+    )
+
+# 3. Campaign with the highest click-through rate
+valid_ctr = df.dropna(subset=["CTR (%)"])
+
+if not valid_ctr.empty:
+    highest_ctr = valid_ctr.loc[
+        valid_ctr["CTR (%)"].idxmax()
+    ]
+
+    st.subheader("👆 Click-Through Performance")
+    st.info(
+        f"**{highest_ctr['campaign']}** has the highest "
+        f"click-through rate at {highest_ctr['CTR (%)']:.2f}%. "
+        "Compare its audience and creative with other "
+        "campaigns to learn what attracts clicks."
+    )
+
+# 4. Campaigns generating no revenue
+no_revenue = df[df["revenue"] == 0]
+
+if not no_revenue.empty:
+    st.subheader("⚠️ Campaigns to Investigate")
+    names = ", ".join(no_revenue["campaign"].astype(str).unique())
+    st.warning(
+        f"These campaigns currently report zero revenue: {names}. "
+        "Check tracking, conversion data and campaign performance "
+        "before deciding what action to take."
+    )
+
+# 5. Overall recommendation
+st.subheader("💡 Recommended Next Step")
+
+if len(df) < 2:
+    st.write(
+        "Upload data for at least two campaigns to compare "
+        "their performance and identify relative strengths."
+    )
+elif total_spend == 0:
+    st.write(
+        "Total spend is zero, so ROAS cannot be meaningfully "
+        "calculated. Check your campaign spend data."
+    )
+else:
+    st.write(
+        "Compare ROAS, cost per conversion and click-through "
+        "rate together before reallocating budget. A strong "
+        "ROAS alone does not guarantee high profit."
+    )
 
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button(
