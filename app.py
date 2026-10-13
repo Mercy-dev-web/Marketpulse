@@ -392,6 +392,146 @@ else:
         "revenue forecast or guarantee. Actual results may differ."
     )
 
+# Channel Revenue Forecaster
+st.divider()
+st.header("🔮 Sales Channel Forecaster")
+
+st.write(
+    "Enter a planned budget for a sales channel to estimate "
+    "the revenue and conversions it could generate, based "
+    "on historical performance."
+)
+
+if "channel" not in df.columns:
+    st.warning(
+        "Your dataset does not contain a Channel column. "
+        "Upload campaign data that identifies the channel "
+        "for each campaign, such as Instagram, WhatsApp, "
+        "Facebook or TikTok, to use this feature."
+    )
+else:
+    channel_data = (
+        df.groupby("channel", as_index=False)
+        .agg(
+            historical_spend=("spend", "sum"),
+            historical_revenue=("revenue", "sum"),
+            historical_conversions=("conversions", "sum")
+        )
+    )
+
+    channel_data = channel_data[
+        channel_data["historical_spend"] > 0
+    ].copy()
+
+    if channel_data.empty:
+        st.warning(
+            "No channels with positive historical spend "
+            "were found in your data."
+        )
+    else:
+        channel_data["historical_roas"] = (
+            channel_data["historical_revenue"]
+            / channel_data["historical_spend"]
+        )
+
+        channel_data["conversion_rate_per_spend"] = (
+            channel_data["historical_conversions"]
+            / channel_data["historical_spend"]
+        )
+
+        selected_channel = st.selectbox(
+            "Which channel are you planning to invest in?",
+            channel_data["channel"].astype(str).tolist(),
+            key="forecast_channel"
+        )
+
+        channel = channel_data[
+            channel_data["channel"].astype(str)
+            == selected_channel
+        ].iloc[0]
+
+        planned_budget = st.number_input(
+            "Enter your planned budget (₦)",
+            min_value=0.0,
+            value=50000.0,
+            step=5000.0,
+            key="forecast_budget"
+        )
+
+        if planned_budget > 0:
+            estimated_revenue = (
+                planned_budget * channel["historical_roas"]
+            )
+
+            estimated_conversions = (
+                planned_budget
+                * channel["conversion_rate_per_spend"]
+            )
+
+            revenue_difference = (
+                estimated_revenue - planned_budget
+            )
+
+            st.subheader("Your Estimated Results")
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "Planned Budget",
+                f"₦{planned_budget:,.2f}"
+            )
+
+            col2.metric(
+                "Estimated Revenue",
+                f"₦{estimated_revenue:,.2f}"
+            )
+
+            col3.metric(
+                "Historical ROAS",
+                f"{channel['historical_roas']:.2f}x"
+            )
+
+            st.metric(
+                "Estimated Conversions",
+                f"{estimated_conversions:,.1f}"
+            )
+
+            st.subheader("Why this estimate?")
+
+            st.write(
+                f"Based on historical data, **{selected_channel}** "
+                f"generated ₦{channel['historical_revenue']:,.2f} "
+                f"in revenue from ₦{channel['historical_spend']:,.2f} "
+                f"in spend."
+            )
+
+            st.info(
+                "This estimate assumes the channel maintains its "
+                "historical revenue-to-spend ratio. It is a "
+                "scenario estimate, not a guarantee or a "
+                "time-series forecast. Actual results may differ."
+            )
+
+            forecast_chart = pd.DataFrame({
+                "Metric": ["Planned Budget", "Estimated Revenue"],
+                "Amount": [planned_budget, estimated_revenue]
+            })
+
+            fig = px.bar(
+                forecast_chart,
+                x="Metric",
+                y="Amount",
+                title=f"Budget Scenario: {selected_channel}",
+                labels={"Amount": "Amount (₦)"}
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+        else:
+            st.info("Enter a budget greater than zero to see estimates.")
+
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button(
     "Download analyzed results",
