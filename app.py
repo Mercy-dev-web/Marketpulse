@@ -286,6 +286,112 @@ else:
         "ROAS alone does not guarantee high profit."
     )
 
+
+# Marketing Budget Simulator
+st.divider()
+st.header("🎛️ Marketing Budget Simulator")
+st.write(
+    "Explore how a budget change could affect revenue "
+    "if a campaign maintains its historical ROAS."
+)
+
+campaign_summary = (
+    df.groupby("campaign", as_index=False)
+    .agg(
+        current_spend=("spend", "sum"),
+        current_revenue=("revenue", "sum")
+    )
+)
+
+campaign_summary = campaign_summary[
+    campaign_summary["current_spend"] > 0
+].copy()
+
+if campaign_summary.empty:
+    st.warning(
+        "The simulator needs at least one campaign "
+        "with positive advertising spend."
+    )
+else:
+    campaign_summary["historical_roas"] = (
+        campaign_summary["current_revenue"]
+        / campaign_summary["current_spend"]
+    )
+
+    selected_campaign = st.selectbox(
+        "Choose a campaign",
+        campaign_summary["campaign"].tolist()
+    )
+
+    selected = campaign_summary[
+        campaign_summary["campaign"] == selected_campaign
+    ].iloc[0]
+
+    budget_change = st.slider(
+        "Adjust the campaign budget (%)",
+        min_value=-50,
+        max_value=100,
+        value=20,
+        step=10
+    )
+
+    current_budget = float(selected["current_spend"])
+    current_revenue = float(selected["current_revenue"])
+    historical_roas = float(selected["historical_roas"])
+
+    scenario_budget = current_budget * (
+        1 + budget_change / 100
+    )
+    estimated_revenue = scenario_budget * historical_roas
+    revenue_difference = estimated_revenue - current_revenue
+
+    st.subheader("Your Scenario")
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "Scenario Budget",
+        f"{scenario_budget:,.2f}",
+        f"{budget_change:+d}%"
+    )
+
+    col2.metric(
+        "Estimated Revenue",
+        f"{estimated_revenue:,.2f}",
+        f"{revenue_difference:+,.2f} vs. current revenue"
+    )
+
+    col3.metric(
+        "Historical ROAS",
+        f"{historical_roas:.2f}x"
+    )
+
+    comparison = pd.DataFrame({
+        "Metric": ["Advertising Budget", "Revenue"],
+        "Current": [current_budget, current_revenue],
+        "Scenario": [scenario_budget, estimated_revenue]
+    })
+
+    comparison_chart = px.bar(
+        comparison,
+        x="Metric",
+        y=["Current", "Scenario"],
+        barmode="group",
+        title="Current Performance vs. Budget Scenario",
+        labels={"value": "Amount", "variable": "Scenario"}
+    )
+
+    st.plotly_chart(
+        comparison_chart,
+        use_container_width=True
+    )
+
+    st.caption(
+        "This is a hypothetical estimate based on historical ROAS, "
+        "assuming performance remains constant. It is not a "
+        "revenue forecast or guarantee. Actual results may differ."
+    )
+
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button(
     "Download analyzed results",
