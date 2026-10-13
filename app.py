@@ -194,11 +194,46 @@ SAMPLE_DATA = pd.DataFrame({
     "Revenue": [150000, 180000, 105000, 120000, 110000]
 })
 
-st.sidebar.header("Campaign data")
+
+# MARKETPULSE SIDEBAR
+st.sidebar.markdown("""
+<div style="padding: 12px 0 22px 0;">
+    <div style="font-size: 27px; font-weight: 850; color: #F2F5FA;">
+        Market<span style="color: #B7FF3C;">Pulse</span>
+    </div>
+    <div style="
+        color: #98A6BA;
+        font-size: 11px;
+        letter-spacing: 2px;
+        margin-top: 5px;
+    ">
+        MARKETING ANALYTICS
+    </div>
+</div>
+
+<div style="
+    background: #111A2B;
+    border: 1px solid #26344A;
+    border-radius: 12px;
+    padding: 13px;
+    margin-bottom: 14px;
+">
+    <div style="color: #B7FF3C; font-weight: 700; font-size: 13px;">
+        YOUR WORKSPACE
+    </div>
+    <div style="color: #98A6BA; font-size: 12px; margin-top: 6px;">
+        Analyse campaigns. Find opportunities. Plan growth.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.sidebar.subheader("📂 Campaign data")
+
 uploaded_file = st.sidebar.file_uploader(
     "Upload your campaign file",
     type=["csv", "xlsx", "xls"]
 )
+
 
 if uploaded_file is not None:
     try:
