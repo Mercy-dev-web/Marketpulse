@@ -533,6 +533,186 @@ else:
         else:
             st.info("Enter a budget greater than zero to see estimates.")
 
+# FutureCast: Trend-Based Revenue Forecast
+st.divider()
+st.header("🔮 FutureCast")
+st.write(
+    "Explore a seven-day revenue outlook using historical "
+    "campaign performance over time."
+)
+
+# Find a date column
+date_candidates = [
+    "date", "campaign_date", "day",
+    "campaign_day", "order_date", "transaction_date"
+]
+
+date_column = next(
+    (col for col in date_candidates if col in df.columns),
+    None
+)
+
+if date_column is None:
+    date_column = next(
+        (
+            col for col in df.columns
+            if "date" in col or col.endswith("_day")
+        ),
+        None
+    )
+
+if date_column is None:
+    st.warning(
+        "FutureCast needs a date column. Include a column "
+        "such as Date or Campaign Date in your uploaded data."
+    )
+else:
+    forecast_data = df[[date_column, "revenue"]].copy()
+    forecast_data[date_column] = pd.to_datetime(
+        forecast_data[date_column], errors="coerce"
+    )
+    forecast_data["revenue"] = pd.to_numeric(
+        forecast_data["revenue"], errors="coerce"
+    )
+
+    forecast_data = forecast_data.dropna(
+        subset=[date_column, "revenue"]
+    )
+
+    if forecast_data.empty:
+        st.warning(
+            "No valid dates and revenue values were found. "
+            "Check the date format in your file."
+        )
+    else:
+        # Combine campaign revenue recorded on the same date
+        daily = (
+            forecast_data
+            .groupby(date_column)["revenue"]
+            .sum()
+            .sort_index()
+        )
+
+        # Use a daily timeline for the forecast
+        daily = daily.resample("D").sum()
+
+        if len(daily) < 3:
+            st.warning(
+                "FutureCast needs at least three days of "
+                "historical data to estimate a trend. "
+                "More history will usually make the estimate "
+                "more informative."
+            )
+        else:
+            st.caption(
+                f"Historical period: {daily.index.min():%d %b %Y} "
+                f"to {daily.index.max():%d %b %Y}"
+            )
+
+            # Fit a simple linear trend against actual elapsed days
+            x = (
+                daily.index - daily.index.min()
+            ).days.to_numpy(dtype=float)
+
+            y = daily.to_numpy(dtype=float)
+
+            slope, intercept = np.polyfit(x, y, 1)
+
+            future_dates = pd.date_range(
+                start=daily.index.max() + pd.Timedelta(days=1),
+                periods=7,
+                freq="D"
+            )
+
+            future_x = (
+                future_dates - daily.index.min()
+            ).days.to_numpy(dtype=float)
+
+            expected = np.maximum(
+                slope * future_x + intercept, 0
+            )
+
+            # Illustrative scenario range, not a statistical interval
+            cautious = expected * 0.85
+            optimistic = expected * 1.15
+
+            total_cautious = float(cautious.sum())
+            total_expected = float(expected.sum())
+            total_optimistic = float(optimistic.sum())
+
+            st.subheader("Your next seven days")
+
+            a, b, c = st.columns(3)
+
+            a.metric(
+                "Cautious scenario",
+                f"₦{total_cautious:,.0f}"
+            )
+
+            b.metric(
+                "Trend estimate",
+                f"₦{total_expected:,.0f}"
+            )
+
+            c.metric(
+                "Optimistic scenario",
+                f"₦{total_optimistic:,.0f}"
+            )
+
+            historical_plot = pd.DataFrame({
+                "Date": daily.index,
+                "Revenue": daily.values,
+                "Series": "Historical revenue"
+            })
+
+            forecast_plot = pd.DataFrame({
+                "Date": future_dates,
+                "Revenue": expected,
+                "Series": "Trend estimate"
+            })
+
+            chart_data = pd.concat(
+                [historical_plot, forecast_plot],
+                ignore_index=True
+            )
+
+            fig = px.line(
+                chart_data,
+                x="Date",
+                y="Revenue",
+                color="Series",
+                markers=True,
+                title="Historical Revenue and Seven-Day Outlook"
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+            st.subheader("Daily forecast")
+            forecast_table = pd.DataFrame({
+                "Date": future_dates.strftime("%d %b %Y"),
+                "Cautious": cautious,
+                "Expected": expected,
+                "Optimistic": optimistic
+            })
+
+            st.dataframe(
+                forecast_table.round(2),
+                use_container_width=True
+            )
+
+            st.caption(
+                "Method: linear trend fitted to daily historical "
+                "revenue. Cautious and optimistic scenarios are "
+                "illustrative ±15% adjustments, not confidence "
+                "intervals. This simple method does not account "
+                "for seasonality, promotions, market changes or "
+                "future budget changes. Results are estimates, "
+                "not guarantees."
+            )
+
 csv = df.to_csv(index=False).encode("utf-8")
 st.download_button(
     "Download analyzed results",
