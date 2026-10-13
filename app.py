@@ -1,1135 +1,1206 @@
+
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import numpy as np
+import plotly.express as px
+from datetime import date, timedelta
 
 # =========================================================
-# PAGE CONFIGURATION
+# 1. PAGE CONFIGURATION
 # =========================================================
 st.set_page_config(
-    page_title="MarketPulse",
+    page_title="MarketPulse | Marketing Analytics",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# =========================================================
-# MARKETPULSE DESIGN SYSTEM
-# =========================================================
 NAVY = "#080D18"
-PANEL = "#111A2B"
-PANEL_HOVER = "#172338"
+PANEL = "#111827"
 GREEN = "#B7FF3C"
-TEXT = "#F2F5FA"
-MUTED = "#98A6BA"
-BORDER = "#26344A"
-BLUE = "#39D5FF"
-PURPLE = "#A78BFA"
-ORANGE = "#FFB86B"
+MUTED = "#94A3B8"
+WHITE = "#F8FAFC"
 
+# =========================================================
+# 2. CUSTOM STYLING
+# =========================================================
 st.markdown(
     f"""
     <style>
-        :root {{
-            --mp-bg: {NAVY};
-            --mp-panel: {PANEL};
-            --mp-green: {GREEN};
-            --mp-text: {TEXT};
-            --mp-muted: {MUTED};
-            --mp-border: {BORDER};
-        }}
+    .stApp {{
+        background-color: {NAVY};
+        color: {WHITE};
+    }}
 
-        .stApp {{
-            background: var(--mp-bg);
-            color: var(--mp-text);
-        }}
+    [data-testid="stSidebar"] {{
+        background-color: #0D1422;
+        border-right: 1px solid #263247;
+    }}
 
-        [data-testid="stHeader"] {{
-            background: rgba(8, 13, 24, 0.92);
-        }}
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {{
+        color: {GREEN};
+    }}
 
-        [data-testid="stSidebar"] {{
-            background: #0D1525;
-            border-right: 1px solid var(--mp-border);
-        }}
+    h1, h2, h3 {{
+        color: {WHITE};
+    }}
 
-        [data-testid="stSidebar"] * {{
-            color: var(--mp-text);
-        }}
+    p, label, .stMarkdown {{
+        color: {WHITE};
+    }}
 
-        .block-container {{
-            max-width: 1500px;
-            padding-top: 2rem;
-            padding-bottom: 3rem;
-        }}
+    div[data-testid="stMetric"] {{
+        background-color: {PANEL};
+        border: 1px solid #263247;
+        padding: 18px;
+        border-radius: 12px;
+    }}
 
-        h1, h2, h3 {{
-            color: var(--mp-text) !important;
-            letter-spacing: -0.025em;
-        }}
+    div[data-testid="stMetricLabel"] {{
+        color: {MUTED};
+    }}
 
-        p, label, .stCaption {{
-            color: var(--mp-muted);
-        }}
+    div[data-testid="stMetricValue"] {{
+        color: {GREEN};
+    }}
 
-        [data-testid="stMetric"] {{
-            background: var(--mp-panel);
-            border: 1px solid var(--mp-border);
-            border-radius: 16px;
-            padding: 20px 22px;
-            min-height: 110px;
-        }}
+    .brand-title {{
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 0;
+    }}
 
-        [data-testid="stMetricLabel"] {{
-            color: var(--mp-muted) !important;
-        }}
+    .brand-title span {{
+        color: {GREEN};
+    }}
 
-        [data-testid="stMetricValue"] {{
-            color: var(--mp-green) !important;
-            font-weight: 700;
-        }}
+    .brand-subtitle {{
+        color: {MUTED};
+        margin-top: 4px;
+        margin-bottom: 24px;
+    }}
 
-        .stButton > button,
-        .stDownloadButton > button {{
-            background: var(--mp-green);
-            color: #101827;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            padding: 0.6rem 1rem;
-        }}
+    .section-card {{
+        background-color: {PANEL};
+        padding: 18px;
+        border-radius: 12px;
+        border: 1px solid #263247;
+        margin-bottom: 12px;
+    }}
 
-        .stButton > button:hover,
-        .stDownloadButton > button:hover {{
-            background: #D0FF7A;
-            color: #080D18;
-        }}
+    .insight-card {{
+        background-color: {PANEL};
+        border-left: 4px solid {GREEN};
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+    }}
 
-        [data-testid="stFileUploader"] {{
-            background: var(--mp-panel);
-            border: 1px dashed #52647E;
-            border-radius: 14px;
-            padding: 12px;
-        }}
+    .small-muted {{
+        color: {MUTED};
+        font-size: 13px;
+    }}
 
-        [data-testid="stDataFrame"],
-        [data-testid="stTable"] {{
-            border: 1px solid var(--mp-border);
-            border-radius: 12px;
-            overflow: hidden;
-        }}
+    div.stButton > button {{
+        background-color: {GREEN};
+        color: {NAVY};
+        border: none;
+        border-radius: 8px;
+        font-weight: 700;
+    }}
 
-        div[data-baseweb="select"] > div,
-        div[data-baseweb="input"] > div {{
-            background: var(--mp-panel);
-            border-color: var(--mp-border);
-            border-radius: 10px;
-        }}
+    div.stButton > button:hover {{
+        background-color: #D0FF7A;
+        color: {NAVY};
+        border: none;
+    }}
 
-        [data-testid="stPlotlyChart"] {{
-            background: var(--mp-panel);
-            border: 1px solid var(--mp-border);
-            border-radius: 16px;
-            padding: 8px;
-        }}
-
-        hr {{
-            border-color: var(--mp-border);
-        }}
+    [data-testid="stDataFrame"] {{
+        border: 1px solid #263247;
+        border-radius: 8px;
+    }}
     </style>
     """,
     unsafe_allow_html=True
 )
 
+# =========================================================
+# 3. BRAND HEADER
+# =========================================================
+def show_header():
+    st.markdown(
+        """
+        <div class="brand-title">Market<span>Pulse</span></div>
+        <div class="brand-subtitle">
+            Marketing intelligence. Better decisions. Measurable growth.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def section_intro(title, description):
+    st.title(title)
+    st.caption(description)
+
 
 # =========================================================
-# REUSABLE CHART THEME
+# 4. SAMPLE DATA
 # =========================================================
-def style_chart(fig):
+@st.cache_data
+def create_sample_data():
+    rng = np.random.default_rng(42)
+
+    campaigns = [
+        "Summer Sale",
+        "Brand Awareness",
+        "Product Launch",
+        "Retargeting",
+        "Email Campaign",
+        "Holiday Promotion",
+        "Influencer Campaign",
+        "Lead Generation",
+        "Customer Loyalty",
+        "Search Campaign"
+    ]
+
+    channels = [
+        "Instagram",
+        "Facebook",
+        "Google Ads",
+        "Email",
+        "TikTok",
+        "LinkedIn",
+        "Instagram",
+        "Google Ads",
+        "Email",
+        "Facebook"
+    ]
+
+    rows = []
+
+    for i, campaign in enumerate(campaigns):
+        spend = int(rng.integers(80000, 450000))
+        impressions = int(rng.integers(15000, 120000))
+        clicks = int(impressions * rng.uniform(0.015, 0.09))
+        conversions = int(clicks * rng.uniform(0.025, 0.16))
+        revenue = int(spend * rng.uniform(0.7, 4.8))
+
+        rows.append({
+            "Date": date.today() - timedelta(days=9 - i),
+            "Campaign": campaign,
+            "Channel": channels[i],
+            "Spend": spend,
+            "Impressions": impressions,
+            "Clicks": clicks,
+            "Conversions": conversions,
+            "Revenue": revenue
+        })
+
+    return pd.DataFrame(rows)
+
+
+# =========================================================
+# 5. DATA CLEANING AND COLUMN MAPPING
+# =========================================================
+ALIASES = {
+    "campaign": "Campaign",
+    "campaign name": "Campaign",
+    "campaign_name": "Campaign",
+    "channel": "Channel",
+    "marketing channel": "Channel",
+    "date": "Date",
+    "campaign date": "Date",
+    "spend": "Spend",
+    "cost": "Spend",
+    "ad spend": "Spend",
+    "budget spent": "Spend",
+    "impressions": "Impressions",
+    "impression": "Impressions",
+    "clicks": "Clicks",
+    "click": "Clicks",
+    "conversions": "Conversions",
+    "conversion": "Conversions",
+    "leads": "Conversions",
+    "revenue": "Revenue",
+    "sales": "Revenue",
+    "sales revenue": "Revenue"
+}
+
+
+def clean_column_name(column):
+    return str(column).strip().lower().replace("-", " ").replace("_", " ")
+
+
+def prepare_data(raw):
+    df = raw.copy()
+
+    # Normalize headers.
+    renamed = {}
+
+    for col in df.columns:
+        key = clean_column_name(col)
+        renamed[col] = ALIASES.get(key, str(col).strip())
+
+    df = df.rename(columns=renamed)
+
+    # Avoid duplicate columns created by column normalization.
+    df = df.loc[:, ~df.columns.duplicated()]
+
+    required = [
+        "Campaign",
+        "Spend",
+        "Impressions",
+        "Clicks",
+        "Conversions",
+        "Revenue"
+    ]
+
+    missing = [col for col in required if col not in df.columns]
+
+    if missing:
+        return None, missing
+
+    if "Channel" not in df.columns:
+        df["Channel"] = "Unspecified"
+
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+
+    df["Campaign"] = (
+        df["Campaign"]
+        .fillna("Unnamed campaign")
+        .astype(str)
+    )
+
+    df["Channel"] = (
+        df["Channel"]
+        .fillna("Unspecified")
+        .astype(str)
+    )
+
+    numeric_cols = [
+        "Spend",
+        "Impressions",
+        "Clicks",
+        "Conversions",
+        "Revenue"
+    ]
+
+    for col in numeric_cols:
+        df[col] = (
+            df[col]
+            .astype(str)
+            .str.replace(",", "", regex=False)
+            .str.replace("₦", "", regex=False)
+            .str.replace("$", "", regex=False)
+            .str.replace("£", "", regex=False)
+        )
+
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df[numeric_cols] = df[numeric_cols].fillna(0)
+
+    # Avoid negative counts and financial values.
+    for col in numeric_cols:
+        df[col] = df[col].clip(lower=0)
+
+    # Calculate campaign performance metrics.
+    df["CTR (%)"] = np.where(
+        df["Impressions"] > 0,
+        df["Clicks"] / df["Impressions"] * 100,
+        0
+    )
+
+    df["Conversion Rate (%)"] = np.where(
+        df["Clicks"] > 0,
+        df["Conversions"] / df["Clicks"] * 100,
+        0
+    )
+
+    df["Cost per Conversion"] = np.where(
+        df["Conversions"] > 0,
+        df["Spend"] / df["Conversions"],
+        0
+    )
+
+    df["ROAS"] = np.where(
+        df["Spend"] > 0,
+        df["Revenue"] / df["Spend"],
+        0
+    )
+
+    return df, []
+
+
+# =========================================================
+# 6. CURRENCY FORMATTING
+# =========================================================
+def money(value):
+    return f"₦{value:,.0f}"
+
+
+def money_decimal(value):
+    return f"₦{value:,.2f}"
+
+
+# =========================================================
+# 7. REUSABLE KPI CARDS
+# =========================================================
+def show_kpis(df):
+    total_spend = df["Spend"].sum()
+    total_revenue = df["Revenue"].sum()
+    total_conversions = df["Conversions"].sum()
+    total_impressions = df["Impressions"].sum()
+    total_clicks = df["Clicks"].sum()
+
+    overall_roas = (
+        total_revenue / total_spend
+        if total_spend > 0 else 0
+    )
+
+    overall_ctr = (
+        total_clicks / total_impressions * 100
+        if total_impressions > 0 else 0
+    )
+
+    overall_cpa = (
+        total_spend / total_conversions
+        if total_conversions > 0 else 0
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric("Total Revenue", money(total_revenue))
+    c2.metric("Total Ad Spend", money(total_spend))
+    c3.metric("Overall ROAS", f"{overall_roas:.2f}x")
+    c4.metric("Conversions", f"{total_conversions:,.0f}")
+
+    c5, c6, c7, c8 = st.columns(4)
+
+    c5.metric("Impressions", f"{total_impressions:,.0f}")
+    c6.metric("Clicks", f"{total_clicks:,.0f}")
+    c7.metric("Overall CTR", f"{overall_ctr:.2f}%")
+    c8.metric("Cost per Conversion", money_decimal(overall_cpa))
+
+
+# =========================================================
+# 8. CHART HELPERS
+# =========================================================
+def apply_chart_theme(fig, height=360):
     fig.update_layout(
-        template="plotly_dark",
+        height=height,
         paper_bgcolor=PANEL,
         plot_bgcolor=PANEL,
-        font=dict(
-            family="Arial",
-            color=TEXT,
-            size=12
-        ),
-        title=dict(
-            font=dict(size=18, color=TEXT)
-        ),
-        colorway=[GREEN, BLUE, PURPLE, ORANGE],
+        font=dict(color=WHITE),
+        margin=dict(l=20, r=20, t=45, b=20),
         legend=dict(
             bgcolor="rgba(0,0,0,0)",
-            font=dict(color=MUTED)
-        ),
-        margin=dict(l=20, r=20, t=65, b=35)
+            font=dict(color=WHITE)
+        )
     )
 
     fig.update_xaxes(
-        gridcolor=BORDER,
-        linecolor=BORDER,
-        tickfont=dict(color=MUTED),
-        title_font=dict(color=MUTED)
+        gridcolor="#263247",
+        zerolinecolor="#263247"
     )
 
     fig.update_yaxes(
-        gridcolor=BORDER,
-        linecolor=BORDER,
-        tickfont=dict(color=MUTED),
-        title_font=dict(color=MUTED),
-        zerolinecolor=BORDER
+        gridcolor="#263247",
+        zerolinecolor="#263247"
     )
 
     return fig
 
 
-# =========================================================
-# BRAND HEADER
-# =========================================================
+def show_performance_charts(df):
+    left, right = st.columns(2)
 
-st.markdown(
-    """
-    <div style="background-color:#111A2B; border:1px solid #26344A; border-radius:20px; padding:30px 32px; margin-bottom:28px;">
-        <div style="color:#B7FF3C; font-size:12px; font-weight:800; letter-spacing:3px; margin-bottom:12px;">
-            MARKETPULSE / MARKETING INTELLIGENCE
+    with left:
+        st.subheader("Revenue by Campaign")
+
+        revenue_df = (
+            df.groupby("Campaign", as_index=False)["Revenue"]
+            .sum()
+            .sort_values("Revenue", ascending=True)
+        )
+
+        fig = px.bar(
+            revenue_df,
+            x="Revenue",
+            y="Campaign",
+            orientation="h",
+            color="Revenue",
+            color_continuous_scale=["#365314", GREEN],
+            title=None
+        )
+
+        fig.update_layout(coloraxis_showscale=False)
+
+        st.plotly_chart(
+            apply_chart_theme(fig),
+            use_container_width=True
+        )
+
+    with right:
+        st.subheader("Spend vs Revenue")
+
+        comparison = df.melt(
+            id_vars="Campaign",
+            value_vars=["Spend", "Revenue"],
+            var_name="Metric",
+            value_name="Amount"
+        )
+
+        fig = px.bar(
+            comparison,
+            x="Campaign",
+            y="Amount",
+            color="Metric",
+            barmode="group",
+            color_discrete_map={
+                "Spend": "#64748B",
+                "Revenue": GREEN
+            }
+        )
+
+        fig.update_layout(xaxis_tickangle=-30)
+
+        st.plotly_chart(
+            apply_chart_theme(fig),
+            use_container_width=True
+        )
+
+
+# =========================================================
+# 9. SMART MARKETING INSIGHTS
+# =========================================================
+def show_insights(df):
+    st.subheader("What your marketing data is saying")
+
+    if df.empty:
+        st.info("No campaign data is available.")
+        return
+
+    total_spend = df["Spend"].sum()
+    total_revenue = df["Revenue"].sum()
+    total_conversions = df["Conversions"].sum()
+
+    best_roas = df.loc[df["ROAS"].idxmax()]
+    highest_ctr = df.loc[df["CTR (%)"].idxmax()]
+
+    st.markdown(
+        f"""
+        <div class="insight-card">
+            <strong>🏆 Strongest return</strong><br>
+            {best_roas['Campaign']} has the highest ROAS at
+            {best_roas['ROAS']:.2f}x.
         </div>
-        <h1 style="color:#F2F5FA; font-size:36px; font-weight:800; margin:0 0 12px 0;">
-            Turn campaign data into <span style="color:#B7FF3C;">growth.</span>
-        </h1>
-        <p style="color:#98A6BA; font-size:15px; line-height:1.7; max-width:700px;">
-            Understand performance, discover opportunities, and make
-            smarter marketing budget decisions — all in one place.
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-
-# =========================================================
-# SAMPLE DATA
-# =========================================================
-SAMPLE_DATA = pd.DataFrame({
-    "Campaign": [
-        "Instagram Ads",
-        "WhatsApp Promotion",
-        "TikTok Ads",
-        "Email Marketing",
-        "Referral Campaign"
-    ],
-    "Channel": [
-        "Paid Social",
-        "WhatsApp",
-        "Video",
-        "Email",
-        "Referral"
-    ],
-    "Spend": [50000, 15000, 40000, 10000, 12000],
-    "Impressions": [50000, 12000, 40000, 20000, 10000],
-    "Clicks": [2500, 1800, 2000, 1600, 900],
-    "Conversions": [50, 90, 35, 60, 55],
-    "Revenue": [150000, 180000, 105000, 120000, 110000]
-})
-
-
-# =========================================================
-# SIDEBAR
-# =========================================================
-st.sidebar.markdown(
-    """
-    <div style="padding: 12px 0 22px 0;">
-        <div style="font-size: 27px; font-weight: 850;">
-            Market<span style="color: #B7FF3C;">Pulse</span>
-        </div>
-        <div style="
-            color: #98A6BA;
-            font-size: 11px;
-            letter-spacing: 2px;
-            margin-top: 5px;
-        ">
-            MARKETING ANALYTICS
-        </div>
-    </div>
-
-    <div style="
-        background: #111A2B;
-        border: 1px solid #26344A;
-        border-radius: 12px;
-        padding: 13px;
-        margin-bottom: 14px;
-    ">
-        <div style="color: #B7FF3C; font-weight: 700;">
-            YOUR WORKSPACE
-        </div>
-        <div style="
-            color: #98A6BA;
-            font-size: 12px;
-            margin-top: 6px;
-        ">
-            Analyse campaigns. Find opportunities. Plan growth.
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-st.sidebar.subheader("📂 Campaign data")
-
-uploaded_file = st.sidebar.file_uploader(
-    "Upload your campaign file",
-    type=["csv", "xlsx", "xls"]
-)
-
-if uploaded_file is not None:
-    try:
-        if uploaded_file.name.lower().endswith(".csv"):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
-    except Exception as e:
-        st.error(f"Could not read your file: {e}")
-        st.stop()
-else:
-    df = SAMPLE_DATA.copy()
-    st.sidebar.info("Showing sample campaign data.")
-
-st.sidebar.caption(
-    "Required columns: Campaign, Spend, Impressions, "
-    "Clicks, Conversions and Revenue. Channel is optional."
-)
-
-
-# =========================================================
-# STANDARDIZE AND VALIDATE DATA
-# =========================================================
-df.columns = [
-    str(col).strip().lower().replace(" ", "_")
-    for col in df.columns
-]
-
-aliases = {
-    "campaign_name": "campaign",
-    "campaigns": "campaign",
-    "cost": "spend",
-    "ad_spend": "spend",
-    "total_spend": "spend",
-    "conversion": "conversions",
-    "sales": "conversions",
-    "revenue_generated": "revenue",
-    "ad_impressions": "impressions",
-    "total_clicks": "clicks",
-    "marketing_channel": "channel"
-}
-
-df = df.rename(columns=aliases)
-
-required = [
-    "campaign",
-    "spend",
-    "impressions",
-    "clicks",
-    "conversions",
-    "revenue"
-]
-
-missing = [col for col in required if col not in df.columns]
-
-if missing:
-    st.error(f"Missing columns: {', '.join(missing)}")
-    st.write("Columns found in your file:", list(df.columns))
-    st.info(
-        "Check your column names and upload the file again."
-    )
-    st.stop()
-
-df["campaign"] = df["campaign"].astype(str).str.strip()
-
-numeric_cols = [
-    "spend",
-    "impressions",
-    "clicks",
-    "conversions",
-    "revenue"
-]
-
-for col in numeric_cols:
-    df[col] = pd.to_numeric(df[col], errors="coerce")
-
-df = df.dropna(subset=required)
-
-if df.empty:
-    st.error("No valid campaign rows were found.")
-    st.stop()
-
-if (df[numeric_cols] < 0).any().any():
-    st.error("Your data contains negative metric values.")
-    st.stop()
-
-if (df["campaign"] == "").any():
-    st.error("Some rows have empty campaign names.")
-    st.stop()
-
-if "channel" in df.columns:
-    df["channel"] = df["channel"].astype(str).str.strip()
-    df["channel"] = df["channel"].replace("", "Unspecified")
-
-
-# =========================================================
-# CALCULATE MARKETING METRICS
-# =========================================================
-df["CTR (%)"] = (
-    df["clicks"]
-    / df["impressions"].replace(0, np.nan)
-    * 100
-)
-
-df["Conversion Rate (%)"] = (
-    df["conversions"]
-    / df["clicks"].replace(0, np.nan)
-    * 100
-)
-
-df["Cost per Conversion"] = (
-    df["spend"]
-    / df["conversions"].replace(0, np.nan)
-)
-
-df["ROAS"] = (
-    df["revenue"]
-    / df["spend"].replace(0, np.nan)
-)
-
-total_spend = float(df["spend"].sum())
-total_revenue = float(df["revenue"].sum())
-total_clicks = float(df["clicks"].sum())
-total_impressions = float(df["impressions"].sum())
-total_conversions = float(df["conversions"].sum())
-
-roas = total_revenue / total_spend if total_spend else 0
-
-ctr = (
-    total_clicks / total_impressions * 100
-    if total_impressions else 0
-)
-
-conversion_rate = (
-    total_conversions / total_clicks * 100
-    if total_clicks else 0
-)
-
-
-# =========================================================
-# CAMPAIGN PERFORMANCE OVERVIEW
-# =========================================================
-st.subheader("Campaign performance overview")
-
-c1, c2, c3, c4 = st.columns(4)
-
-c1.metric("Total Spend", f"₦{total_spend:,.0f}")
-c2.metric("Total Revenue", f"₦{total_revenue:,.0f}")
-c3.metric("Total Conversions", f"{total_conversions:,.0f}")
-c4.metric("Overall ROAS", f"{roas:.2f}x")
-
-c5, c6 = st.columns(2)
-
-c5.metric("Overall CTR", f"{ctr:.2f}%")
-c6.metric("Conversion Rate", f"{conversion_rate:.2f}%")
-
-st.caption(
-    "ROAS means revenue generated for every unit of "
-    "advertising spend. It is not the same as profit."
-)
-
-
-# =========================================================
-# CAMPAIGN COMPARISONS
-# =========================================================
-st.divider()
-st.subheader("Campaign comparisons")
-
-left, right = st.columns(2)
-
-with left:
-    spend_chart = px.bar(
-        df,
-        x="campaign",
-        y="spend",
-        title="Spend by Campaign",
-        labels={
-            "campaign": "Campaign",
-            "spend": "Spend (₦)"
-        }
-    )
-    spend_chart.update_traces(marker_color=GREEN)
-    st.plotly_chart(
-        style_chart(spend_chart),
-        use_container_width=True
+        """,
+        unsafe_allow_html=True
     )
 
-with right:
-    revenue_chart = px.bar(
-        df,
-        x="campaign",
-        y="revenue",
-        title="Revenue by Campaign",
-        labels={
-            "campaign": "Campaign",
-            "revenue": "Revenue (₦)"
-        }
+    st.markdown(
+        f"""
+        <div class="insight-card">
+            <strong>👀 Highest click-through rate</strong><br>
+            {highest_ctr['Campaign']} has a CTR of
+            {highest_ctr['CTR (%)']:.2f}%.
+            Review its creative, message and audience to identify
+            what might be working.
+        </div>
+        """,
+        unsafe_allow_html=True
     )
-    revenue_chart.update_traces(marker_color=BLUE)
-    st.plotly_chart(
-        style_chart(revenue_chart),
-        use_container_width=True
+
+    positive = df[df["Conversions"] > 0]
+
+    if not positive.empty:
+        expensive = positive.loc[
+            positive["Cost per Conversion"].idxmax()
+        ]
+
+        st.markdown(
+            f"""
+            <div class="insight-card">
+                <strong>💸 Most expensive conversion</strong><br>
+                {expensive['Campaign']} costs
+                {money_decimal(expensive['Cost per Conversion'])}
+                per conversion, the highest among campaigns with conversions.
+                Investigate targeting, landing pages and campaign costs.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    no_revenue = df[
+        (df["Revenue"] <= 0) & (df["Spend"] > 0)
+    ]
+
+    if not no_revenue.empty:
+        names = ", ".join(no_revenue["Campaign"].astype(str).head(5))
+
+        st.markdown(
+            f"""
+            <div class="insight-card">
+                <strong>⚠️ Spend without recorded revenue</strong><br>
+                {names} have ad spend but no recorded revenue.
+                Check conversion tracking and sales attribution before
+                deciding whether to pause them.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    total_roas = total_revenue / total_spend if total_spend > 0 else 0
+
+    if total_roas >= 2:
+        recommendation = (
+            "Overall ROAS is at least 2x. Review profit margins and "
+            "campaign-level performance before increasing budgets."
+        )
+    elif total_roas > 0:
+        recommendation = (
+            "Overall ROAS is below 2x. Review campaign costs, "
+            "conversion quality and revenue attribution before scaling."
+        )
+    else:
+        recommendation = (
+            "No revenue is currently recorded against the spend. "
+            "Verify your revenue data and tracking first."
+        )
+
+    st.markdown(
+        f"""
+        <div class="insight-card">
+            <strong>💡 Recommended next step</strong><br>
+            {recommendation}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.caption(
+        "These are data-driven prompts, not proof of causation. "
+        "ROAS measures revenue relative to ad spend; it does not "
+        "by itself measure profit."
     )
 
 
 # =========================================================
-# CHANNEL PERFORMANCE
+# 10. SIDEBAR NAVIGATION AND DATA UPLOAD
 # =========================================================
-if "channel" in df.columns:
-    st.subheader("Performance by Channel")
+with st.sidebar:
+    st.markdown("## MarketPulse")
+    st.caption("Marketing intelligence dashboard")
 
-    channel_data = (
-        df.groupby("channel", as_index=False)
-        .agg(
-            Spend=("spend", "sum"),
-            Revenue=("revenue", "sum"),
-            Clicks=("clicks", "sum"),
-            Conversions=("conversions", "sum")
+    st.markdown("---")
+
+    page = st.radio(
+        "NAVIGATION",
+        [
+            "Overview",
+            "Campaign Analytics",
+            "Marketing Insights",
+            "Budget Planner",
+            "FutureCast",
+            "Export Results"
+        ],
+        index=0
+    )
+
+    st.markdown("---")
+    st.subheader("Your Data")
+
+    uploaded_file = st.file_uploader(
+        "Upload campaign data",
+        type=["csv", "xlsx", "xls"],
+        help=(
+            "Your file needs Campaign, Spend, Impressions, Clicks, "
+            "Conversions and Revenue columns. Channel and Date are optional."
         )
     )
 
-    channel_data["ROAS"] = (
-        channel_data["Revenue"]
-        / channel_data["Spend"].replace(0, np.nan)
+    st.caption(
+        "No file uploaded? MarketPulse will use sample data."
     )
 
+    st.markdown("---")
+    st.caption("MarketPulse • Marketing Analytics")
+
+
+# =========================================================
+# 11. LOAD AND VALIDATE DATA
+# =========================================================
+if uploaded_file is not None:
+    try:
+        if uploaded_file.name.lower().endswith(".csv"):
+            raw_df = pd.read_csv(uploaded_file)
+        else:
+            raw_df = pd.read_excel(uploaded_file)
+
+        df, missing_columns = prepare_data(raw_df)
+
+        if missing_columns:
+            st.error(
+                "Your file is missing required columns: "
+                + ", ".join(missing_columns)
+            )
+            st.info(
+                "Rename your columns to Campaign, Spend, Impressions, "
+                "Clicks, Conversions and Revenue, or use recognized aliases."
+            )
+            st.stop()
+
+        data_source = uploaded_file.name
+
+    except Exception as exc:
+        st.error(f"Unable to read your file: {exc}")
+        st.info(
+            "Check that the file is valid and that Excel files have "
+            "the required reading dependency installed."
+        )
+        st.stop()
+else:
+    df, _ = prepare_data(create_sample_data())
+    data_source = "Sample marketing dataset"
+
+
+# =========================================================
+# 12. PAGE HEADER
+# =========================================================
+show_header()
+
+st.caption(f"Data source: {data_source}")
+
+if df.empty:
+    st.warning("Your dataset is empty. Upload a file with campaign records.")
+    st.stop()
+
+
+# =========================================================
+# 13. OVERVIEW
+# =========================================================
+if page == "Overview":
+    section_intro(
+        "Overview",
+        "Your marketing performance at a glance."
+    )
+
+    show_kpis(df)
+
+    st.markdown("---")
+
+    show_performance_charts(df)
+
+    st.markdown("---")
+
+    st.subheader("Quick Performance Summary")
+
+    best = df.loc[df["ROAS"].idxmax()]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(
+            f"""
+            <div class="section-card">
+                <div class="small-muted">Best ROAS campaign</div>
+                <h3>{best['Campaign']}</h3>
+                <h2 style="color:{GREEN};">{best['ROAS']:.2f}x</h2>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with col2:
+        st.markdown(
+            f"""
+            <div class="section-card">
+                <div class="small-muted">Total campaigns</div>
+                <h3>{df['Campaign'].nunique()}</h3>
+                <p>Campaigns included in the current dataset.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.subheader("Recent Campaign Records")
+
+    display_cols = [
+        "Campaign", "Channel", "Spend",
+        "Revenue", "Conversions", "ROAS"
+    ]
+
     st.dataframe(
-        channel_data.round(2),
+        df[display_cols].tail(5),
         use_container_width=True,
         hide_index=True
     )
 
 
 # =========================================================
-# DETAILED CAMPAIGN RESULTS
+# 14. CAMPAIGN ANALYTICS
 # =========================================================
-st.subheader("Detailed campaign results")
-
-display_cols = [
-    "campaign",
-    "spend",
-    "impressions",
-    "clicks",
-    "conversions",
-    "revenue",
-    "CTR (%)",
-    "Conversion Rate (%)",
-    "Cost per Conversion",
-    "ROAS"
-]
-
-st.dataframe(
-    df[display_cols].round(2),
-    use_container_width=True,
-    hide_index=True
-)
-
-
-# =========================================================
-# SMART MARKETING INSIGHTS
-# =========================================================
-st.divider()
-st.header("🧠 Smart Marketing Insights")
-
-st.write(
-    "MarketPulse examines your campaign performance "
-    "and highlights opportunities for improvement."
-)
-
-# Strongest ROAS
-valid_roas = df.dropna(subset=["ROAS"])
-
-if not valid_roas.empty:
-    best = valid_roas.loc[valid_roas["ROAS"].idxmax()]
-
-    st.subheader("🏆 Strongest Return on Ad Spend")
-
-    st.success(
-        f"**{best['campaign']}** has the highest ROAS "
-        f"at **{best['ROAS']:.2f}x**. Study what makes "
-        "this campaign effective before considering "
-        "a budget increase."
+elif page == "Campaign Analytics":
+    section_intro(
+        "Campaign Analytics",
+        "Compare campaigns and identify differences in performance."
     )
 
-# Highest cost per conversion
-valid_costs = df.dropna(subset=["Cost per Conversion"])
-valid_costs = valid_costs[valid_costs["conversions"] > 0]
+    channel_options = sorted(df["Channel"].dropna().unique().tolist())
 
-if not valid_costs.empty:
-    costly = valid_costs.loc[
-        valid_costs["Cost per Conversion"].idxmax()
-    ]
-
-    st.subheader("💸 Cost Improvement Opportunity")
-
-    st.warning(
-        f"**{costly['campaign']}** has the highest "
-        f"cost per conversion at "
-        f"₦{costly['Cost per Conversion']:,.2f}. "
-        "Review its targeting, creative and conversion "
-        "journey to identify possible improvements."
+    selected_channels = st.multiselect(
+        "Filter by channel",
+        options=channel_options,
+        default=channel_options
     )
 
-# Highest CTR
-valid_ctr = df.dropna(subset=["CTR (%)"])
+    filtered_df = df[df["Channel"].isin(selected_channels)].copy()
 
-if not valid_ctr.empty:
-    highest_ctr = valid_ctr.loc[valid_ctr["CTR (%)"].idxmax()]
+    if filtered_df.empty:
+        st.warning("No campaigns match your selected channels.")
+        st.stop()
 
-    st.subheader("👆 Click-Through Performance")
+    show_kpis(filtered_df)
 
-    st.info(
-        f"**{highest_ctr['campaign']}** has the highest "
-        f"click-through rate at {highest_ctr['CTR (%)']:.2f}%. "
-        "Compare its audience and creative with other "
-        "campaigns to understand what attracts clicks."
+    st.markdown("---")
+
+    show_performance_charts(filtered_df)
+
+    st.markdown("---")
+
+    st.subheader("Channel Performance")
+
+    channel_df = (
+        filtered_df.groupby("Channel", as_index=False)
+        .agg({
+            "Spend": "sum",
+            "Revenue": "sum",
+            "Impressions": "sum",
+            "Clicks": "sum",
+            "Conversions": "sum"
+        })
     )
 
-# No revenue
-no_revenue = df[df["revenue"] == 0]
-
-if not no_revenue.empty:
-    names = ", ".join(
-        no_revenue["campaign"].astype(str).unique()
+    channel_df["ROAS"] = np.where(
+        channel_df["Spend"] > 0,
+        channel_df["Revenue"] / channel_df["Spend"],
+        0
     )
 
-    st.subheader("⚠️ Campaigns to Investigate")
-
-    st.warning(
-        f"These campaigns report zero revenue: {names}. "
-        "Check tracking, conversion data and performance "
-        "before deciding what action to take."
+    channel_df["CTR (%)"] = np.where(
+        channel_df["Impressions"] > 0,
+        channel_df["Clicks"] / channel_df["Impressions"] * 100,
+        0
     )
 
-# Overall recommendation
-st.subheader("💡 Recommended Next Step")
+    channel_df["Conversion Rate (%)"] = np.where(
+        channel_df["Clicks"] > 0,
+        channel_df["Conversions"] / channel_df["Clicks"] * 100,
+        0
+    )
 
-if len(df) < 2:
-    st.write(
-        "Upload at least two campaigns to compare "
-        "their performance and identify relative strengths."
+    channel_df["Cost per Conversion"] = np.where(
+        channel_df["Conversions"] > 0,
+        channel_df["Spend"] / channel_df["Conversions"],
+        0
     )
-elif total_spend == 0:
-    st.write(
-        "Total advertising spend is zero, so ROAS cannot "
-        "be meaningfully calculated. Check your spend data."
+
+    st.dataframe(
+        channel_df.sort_values("Revenue", ascending=False),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Spend": st.column_config.NumberColumn(format="₦%.2f"),
+            "Revenue": st.column_config.NumberColumn(format="₦%.2f"),
+            "ROAS": st.column_config.NumberColumn(format="%.2fx"),
+            "CTR (%)": st.column_config.NumberColumn(format="%.2f%%"),
+            "Conversion Rate (%)": st.column_config.NumberColumn(
+                format="%.2f%%"
+            ),
+            "Cost per Conversion": st.column_config.NumberColumn(
+                format="₦%.2f"
+            )
+        }
     )
-else:
-    st.write(
-        "Compare ROAS, cost per conversion and CTR together "
-        "before reallocating budget. A high ROAS alone "
-        "does not guarantee high profit."
+
+    st.markdown("---")
+
+    st.subheader("Detailed Campaign Results")
+
+    st.dataframe(
+        filtered_df.sort_values("Revenue", ascending=False),
+        use_container_width=True,
+        hide_index=True
     )
 
 
 # =========================================================
-# MARKETING BUDGET SIMULATOR
+# 15. MARKETING INSIGHTS
 # =========================================================
-st.divider()
-st.header("🎛️ Marketing Budget Simulator")
-
-st.write(
-    "Explore how a budget change could affect revenue "
-    "if a campaign maintains its historical ROAS."
-)
-
-campaign_summary = (
-    df.groupby("campaign", as_index=False)
-    .agg(
-        current_spend=("spend", "sum"),
-        current_revenue=("revenue", "sum")
-    )
-)
-
-campaign_summary = campaign_summary[
-    campaign_summary["current_spend"] > 0
-].copy()
-
-if campaign_summary.empty:
-    st.warning(
-        "The simulator needs at least one campaign "
-        "with positive advertising spend."
-    )
-else:
-    campaign_summary["historical_roas"] = (
-        campaign_summary["current_revenue"]
-        / campaign_summary["current_spend"]
+elif page == "Marketing Insights":
+    section_intro(
+        "Marketing Insights",
+        "Turn your campaign results into questions and next steps."
     )
 
-    selected_campaign = st.selectbox(
-        "Choose a campaign",
-        campaign_summary["campaign"].tolist(),
-        key="budget_campaign"
+    show_insights(df)
+
+    st.markdown("---")
+
+    st.subheader("Campaign ROAS Comparison")
+
+    roas_df = df.sort_values("ROAS", ascending=True)
+
+    fig = px.bar(
+        roas_df,
+        x="ROAS",
+        y="Campaign",
+        orientation="h",
+        color="ROAS",
+        color_continuous_scale=["#365314", GREEN],
+        labels={"ROAS": "Return on ad spend"}
     )
 
-    selected = campaign_summary[
-        campaign_summary["campaign"] == selected_campaign
-    ].iloc[0]
+    fig.update_layout(coloraxis_showscale=False)
 
-    budget_change = st.slider(
-        "Adjust the campaign budget (%)",
-        min_value=-50,
-        max_value=100,
-        value=20,
-        step=10
+    st.plotly_chart(
+        apply_chart_theme(fig, height=440),
+        use_container_width=True
     )
 
-    current_budget = float(selected["current_spend"])
-    current_revenue = float(selected["current_revenue"])
-    historical_roas = float(selected["historical_roas"])
+    st.subheader("CTR vs Conversion Rate")
 
-    scenario_budget = current_budget * (
-        1 + budget_change / 100
-    )
-
-    estimated_revenue = scenario_budget * historical_roas
-    revenue_difference = estimated_revenue - current_revenue
-
-    st.subheader("Your Scenario")
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric(
-        "Scenario Budget",
-        f"₦{scenario_budget:,.0f}",
-        f"{budget_change:+d}%"
-    )
-
-    col2.metric(
-        "Estimated Revenue",
-        f"₦{estimated_revenue:,.0f}",
-        f"₦{revenue_difference:+,.0f} vs. current"
-    )
-
-    col3.metric(
-        "Historical ROAS",
-        f"{historical_roas:.2f}x"
-    )
-
-    comparison = pd.DataFrame({
-        "Metric": ["Advertising Budget", "Revenue"],
-        "Current": [current_budget, current_revenue],
-        "Scenario": [scenario_budget, estimated_revenue]
-    })
-
-    comparison_chart = px.bar(
-        comparison,
-        x="Metric",
-        y=["Current", "Scenario"],
-        barmode="group",
-        title="Current Performance vs. Budget Scenario",
-        labels={
-            "value": "Amount (₦)",
-            "variable": "Scenario"
-        },
-        color_discrete_sequence=[BLUE, GREEN]
+    fig = px.scatter(
+        df,
+        x="CTR (%)",
+        y="Conversion Rate (%)",
+        size="Revenue",
+        color="Channel",
+        hover_name="Campaign",
+        hover_data=["Spend", "Conversions", "ROAS"]
     )
 
     st.plotly_chart(
-        style_chart(comparison_chart),
+        apply_chart_theme(fig, height=420),
+        use_container_width=True
+    )
+
+
+# =========================================================
+# 16. BUDGET PLANNER
+# =========================================================
+elif page == "Budget Planner":
+    section_intro(
+        "Budget Planner",
+        "Explore hypothetical budget changes and channel allocations."
+    )
+
+    st.subheader("Marketing Budget Simulator")
+
+    total_spend = float(df["Spend"].sum())
+    total_revenue = float(df["Revenue"].sum())
+
+    overall_roas = (
+        total_revenue / total_spend if total_spend > 0 else 0
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        budget = st.number_input(
+            "Proposed total budget (₦)",
+            min_value=0.0,
+            value=float(max(total_spend, 100000)),
+            step=10000.0
+        )
+
+    with col2:
+        assumed_roas = st.number_input(
+            "Assumed ROAS (x)",
+            min_value=0.0,
+            value=float(round(overall_roas, 2)),
+            step=0.1
+        )
+
+    projected_revenue = budget * assumed_roas
+    projected_difference = projected_revenue - budget
+
+    m1, m2, m3 = st.columns(3)
+
+    m1.metric("Proposed Budget", money(budget))
+    m2.metric("Projected Revenue", money(projected_revenue))
+    m3.metric(
+        "Revenue minus Ad Spend",
+        money(projected_difference)
+    )
+
+    st.caption(
+        "This is a scenario, not a guaranteed outcome. "
+        "Revenue minus ad spend is not net profit because other costs "
+        "such as product costs and operating expenses are excluded."
+    )
+
+    st.markdown("---")
+
+    st.subheader("Sales Channel Forecaster")
+
+    channel_summary = (
+        df.groupby("Channel", as_index=False)
+        .agg({"Spend": "sum", "Revenue": "sum"})
+    )
+
+    channel_summary["Historical ROAS"] = np.where(
+        channel_summary["Spend"] > 0,
+        channel_summary["Revenue"] / channel_summary["Spend"],
+        0
+    )
+
+    if channel_summary.empty:
+        st.info("No channel data is available for forecasting.")
+    else:
+        chosen_channel = st.selectbox(
+            "Select a channel",
+            channel_summary["Channel"].tolist()
+        )
+
+        selected_row = channel_summary[
+            channel_summary["Channel"] == chosen_channel
+        ].iloc[0]
+
+        default_roas = float(selected_row["Historical ROAS"])
+
+        proposed_channel_budget = st.number_input(
+            f"Proposed budget for {chosen_channel} (₦)",
+            min_value=0.0,
+            value=float(max(selected_row["Spend"], 0)),
+            step=10000.0,
+            key="channel_budget"
+        )
+
+        channel_roas = st.number_input(
+            "Assumed channel ROAS (x)",
+            min_value=0.0,
+            value=round(default_roas, 2),
+            step=0.1,
+            key="channel_roas"
+        )
+
+        forecast_revenue = proposed_channel_budget * channel_roas
+
+        st.metric(
+            f"Projected {chosen_channel} Revenue",
+            money(forecast_revenue)
+        )
+
+        st.caption(
+            "The forecast assumes the ROAS you entered remains constant. "
+            "Actual performance can change with budget, audience and seasonality."
+        )
+
+    st.markdown("---")
+
+    st.subheader("Historical Channel Returns")
+
+    fig = px.bar(
+        channel_summary.sort_values("Historical ROAS"),
+        x="Channel",
+        y="Historical ROAS",
+        color="Historical ROAS",
+        color_continuous_scale=["#365314", GREEN]
+    )
+
+    fig.update_layout(coloraxis_showscale=False)
+
+    st.plotly_chart(
+        apply_chart_theme(fig),
+        use_container_width=True
+    )
+
+
+# =========================================================
+# 17. FUTURECAST
+# =========================================================
+elif page == "FutureCast":
+    section_intro(
+        "FutureCast",
+        "Explore a simple seven-day revenue projection from historical data."
+    )
+
+    if "Date" not in df.columns:
+        st.warning(
+            "Your dataset has no recognized Date column. "
+            "Upload campaign data with a Date column to use FutureCast."
+        )
+        st.info(
+            "The Date column should contain valid dates for each campaign record."
+        )
+    else:
+        dated_df = df.dropna(subset=["Date"]).copy()
+
+        if dated_df.empty:
+            st.warning(
+                "No valid dates were found. Check the values in your Date column."
+            )
+        else:
+            daily = (
+                dated_df.groupby("Date", as_index=False)
+                .agg({
+                    "Revenue": "sum",
+                    "Spend": "sum",
+                    "Conversions": "sum"
+                })
+                .sort_values("Date")
+            )
+
+            st.subheader("Historical Daily Revenue")
+
+            fig = px.line(
+                daily,
+                x="Date",
+                y="Revenue",
+                markers=True,
+                labels={"Revenue": "Revenue (₦)"}
+            )
+
+            fig.update_traces(line_color=GREEN)
+
+            st.plotly_chart(
+                apply_chart_theme(fig, height=400),
+                use_container_width=True
+            )
+
+            st.markdown("---")
+
+            st.subheader("Seven-Day Revenue Forecast")
+
+            if len(daily) < 2:
+                st.info(
+                    "At least two distinct dates are required for this simple "
+                    "forecast. Upload more historical data."
+                )
+            else:
+                # Simple linear trend extrapolation.
+                # This is an illustrative baseline, not a full forecasting model.
+                x = np.arange(len(daily))
+                y = daily["Revenue"].to_numpy(dtype=float)
+
+                slope, intercept = np.polyfit(x, y, 1)
+
+                future_x = np.arange(len(daily), len(daily) + 7)
+                predictions = np.maximum(
+                    slope * future_x + intercept,
+                    0
+                )
+
+                last_date = daily["Date"].max()
+
+                future_dates = pd.date_range(
+                    start=last_date + pd.Timedelta(days=1),
+                    periods=7,
+                    freq="D"
+                )
+
+                forecast_df = pd.DataFrame({
+                    "Date": future_dates,
+                    "Forecast Revenue": predictions
+                })
+
+                fig = px.line(
+                    forecast_df,
+                    x="Date",
+                    y="Forecast Revenue",
+                    markers=True,
+                    labels={"Forecast Revenue": "Forecast revenue (₦)"}
+                )
+
+                fig.update_traces(
+                    line_color=GREEN,
+                    line_dash="dash"
+                )
+
+                st.plotly_chart(
+                    apply_chart_theme(fig, height=400),
+                    use_container_width=True
+                )
+
+                total_forecast = forecast_df["Forecast Revenue"].sum()
+
+                st.metric(
+                    "Projected Revenue for Next 7 Days",
+                    money(total_forecast)
+                )
+
+                st.dataframe(
+                    forecast_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Forecast Revenue": st.column_config.NumberColumn(
+                            format="₦%.2f"
+                        )
+                    }
+                )
+
+                st.caption(
+                    "Method: linear trend extrapolation using daily revenue. "
+                    "It does not account for seasonality, holidays, campaign "
+                    "changes or external factors. Treat results as an "
+                    "illustrative baseline, not a reliable prediction."
+                )
+
+
+# =========================================================
+# 18. EXPORT RESULTS
+# =========================================================
+elif page == "Export Results":
+    section_intro(
+        "Export Results",
+        "Review and download the analyzed marketing dataset."
+    )
+
+    st.subheader("Analyzed Campaign Data")
+
+    st.dataframe(
+        df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.markdown("---")
+
+    st.subheader("Download Your Results")
+
+    csv_data = df.to_csv(index=False).encode("utf-8-sig")
+
+    st.download_button(
+        label="Download Analyzed CSV",
+        data=csv_data,
+        file_name="marketpulse_analyzed_results.csv",
+        mime="text/csv",
         use_container_width=True
     )
 
     st.caption(
-        "Hypothetical estimate based on historical ROAS. "
-        "It assumes performance remains constant and is "
-        "not a guarantee of future revenue."
+        "The export includes the uploaded or sample data and the "
+        "calculated performance metrics."
     )
 
 
 # =========================================================
-# SALES CHANNEL FORECASTER
+# 19. FOOTER
 # =========================================================
-st.divider()
-st.header("🔮 Sales Channel Forecaster")
-
-st.write(
-    "Enter a planned budget for a sales channel to estimate "
-    "revenue and conversions from its historical performance."
-)
-
-if "channel" not in df.columns:
-    st.warning(
-        "Your dataset needs a Channel column to use this feature."
-    )
-else:
-    channel_summary = (
-        df.groupby("channel", as_index=False)
-        .agg(
-            historical_spend=("spend", "sum"),
-            historical_revenue=("revenue", "sum"),
-            historical_conversions=("conversions", "sum")
-        )
-    )
-
-    channel_summary = channel_summary[
-        channel_summary["historical_spend"] > 0
-    ].copy()
-
-    if channel_summary.empty:
-        st.warning(
-            "No channels with positive historical spend "
-            "were found."
-        )
-    else:
-        channel_summary["historical_roas"] = (
-            channel_summary["historical_revenue"]
-            / channel_summary["historical_spend"]
-        )
-
-        channel_summary["conversions_per_spend"] = (
-            channel_summary["historical_conversions"]
-            / channel_summary["historical_spend"]
-        )
-
-        selected_channel = st.selectbox(
-            "Which channel are you planning to invest in?",
-            channel_summary["channel"].astype(str).tolist(),
-            key="sales_forecast_channel"
-        )
-
-        channel = channel_summary[
-            channel_summary["channel"].astype(str)
-            == selected_channel
-        ].iloc[0]
-
-        planned_budget = st.number_input(
-            "Enter your planned budget (₦)",
-            min_value=0.0,
-            value=50000.0,
-            step=5000.0,
-            key="sales_forecast_budget"
-        )
-
-        if planned_budget > 0:
-            estimated_channel_revenue = (
-                planned_budget * channel["historical_roas"]
-            )
-
-            estimated_channel_conversions = (
-                planned_budget * channel["conversions_per_spend"]
-            )
-
-            st.subheader("Your Estimated Results")
-
-            col1, col2, col3 = st.columns(3)
-
-            col1.metric(
-                "Planned Budget",
-                f"₦{planned_budget:,.0f}"
-            )
-
-            col2.metric(
-                "Estimated Revenue",
-                f"₦{estimated_channel_revenue:,.0f}"
-            )
-
-            col3.metric(
-                "Historical ROAS",
-                f"{channel['historical_roas']:.2f}x"
-            )
-
-            st.metric(
-                "Estimated Conversions",
-                f"{estimated_channel_conversions:,.1f}"
-            )
-
-            st.write(
-                f"Historically, **{selected_channel}** generated "
-                f"₦{channel['historical_revenue']:,.2f} in revenue "
-                f"from ₦{channel['historical_spend']:,.2f} in spend."
-            )
-
-            forecast_chart = pd.DataFrame({
-                "Metric": ["Planned Budget", "Estimated Revenue"],
-                "Amount": [
-                    planned_budget,
-                    estimated_channel_revenue
-                ]
-            })
-
-            fig = px.bar(
-                forecast_chart,
-                x="Metric",
-                y="Amount",
-                title=f"Budget Scenario: {selected_channel}",
-                labels={"Amount": "Amount (₦)"},
-                color="Metric",
-                color_discrete_sequence=[BLUE, GREEN]
-            )
-
-            st.plotly_chart(
-                style_chart(fig),
-                use_container_width=True
-            )
-
-            st.caption(
-                "This scenario assumes the channel maintains "
-                "its historical revenue and conversion ratios. "
-                "Actual results may differ."
-            )
-        else:
-            st.info(
-                "Enter a budget greater than zero to see estimates."
-            )
-
-
-# =========================================================
-# FUTURECAST — SEVEN-DAY REVENUE OUTLOOK
-# =========================================================
-st.divider()
-st.header("📈 FutureCast")
-
-st.write(
-    "Explore a seven-day revenue outlook using historical "
-    "daily revenue. You can view all campaigns or focus "
-    "on an individual channel."
-)
-
-date_candidates = [
-    "date",
-    "campaign_date",
-    "day",
-    "campaign_day",
-    "order_date",
-    "transaction_date"
-]
-
-date_column = next(
-    (col for col in date_candidates if col in df.columns),
-    None
-)
-
-if date_column is None:
-    date_column = next(
-        (
-            col for col in df.columns
-            if "date" in col or col.endswith("_day")
-        ),
-        None
-    )
-
-if date_column is None:
-    st.info(
-        "FutureCast is waiting for dated campaign data. "
-        "Add a date column such as Date, Campaign Date or "
-        "Transaction Date to your uploaded file to activate "
-        "the seven-day outlook. The other dashboard features "
-        "are available without a date column."
-    )
-else:
-    forecast_data = df.copy()
-
-    forecast_data[date_column] = pd.to_datetime(
-        forecast_data[date_column],
-        errors="coerce"
-    )
-
-    forecast_data["revenue"] = pd.to_numeric(
-        forecast_data["revenue"],
-        errors="coerce"
-    )
-
-    forecast_data = forecast_data.dropna(
-        subset=[date_column, "revenue"]
-    )
-
-    if forecast_data.empty:
-        st.warning(
-            "No valid dates and revenue values were found. "
-            "Check the date format in your file."
-        )
-    else:
-        forecast_scope = "All campaigns"
-
-        if "channel" in forecast_data.columns:
-            forecast_scope = st.radio(
-                "Forecast scope",
-                ["All campaigns", "Choose a channel"],
-                horizontal=True,
-                key="futurecast_scope"
-            )
-
-        if (
-            forecast_scope == "Choose a channel"
-            and "channel" in forecast_data.columns
-        ):
-            available_channels = sorted(
-                forecast_data["channel"]
-                .dropna()
-                .astype(str)
-                .unique()
-                .tolist()
-            )
-
-            selected_future_channel = st.selectbox(
-                "Select a channel",
-                available_channels,
-                key="futurecast_channel"
-            )
-
-            forecast_data = forecast_data[
-                forecast_data["channel"].astype(str)
-                == selected_future_channel
-            ]
-
-        daily = (
-            forecast_data
-            .groupby(date_column)["revenue"]
-            .sum()
-            .sort_index()
-            .resample("D")
-            .sum()
-        )
-
-        if len(daily) < 3:
-            st.warning(
-                "FutureCast needs at least three distinct days "
-                "of historical data. Upload more dated records "
-                "to calculate a trend."
-            )
-        else:
-            st.caption(
-                f"Historical period: {daily.index.min():%d %b %Y} "
-                f"to {daily.index.max():%d %b %Y}"
-            )
-
-            x = (
-                daily.index - daily.index.min()
-            ).days.to_numpy(dtype=float)
-
-            y = daily.to_numpy(dtype=float)
-
-            slope, intercept = np.polyfit(x, y, 1)
-
-            future_dates = pd.date_range(
-                start=daily.index.max() + pd.Timedelta(days=1),
-                periods=7,
-                freq="D"
-            )
-
-            future_x = (
-                future_dates - daily.index.min()
-            ).days.to_numpy(dtype=float)
-
-            expected = np.maximum(
-                slope * future_x + intercept,
-                0
-            )
-
-            cautious = expected * 0.85
-            optimistic = expected * 1.15
-
-            total_cautious = float(cautious.sum())
-            total_expected = float(expected.sum())
-            total_optimistic = float(optimistic.sum())
-
-            st.subheader("Your Next Seven Days")
-
-            a, b, c = st.columns(3)
-
-            a.metric(
-                "Cautious Scenario",
-                f"₦{total_cautious:,.0f}"
-            )
-
-            b.metric(
-                "Trend Estimate",
-                f"₦{total_expected:,.0f}"
-            )
-
-            c.metric(
-                "Optimistic Scenario",
-                f"₦{total_optimistic:,.0f}"
-            )
-
-            historical_plot = pd.DataFrame({
-                "Date": daily.index,
-                "Revenue": daily.values,
-                "Series": "Historical revenue"
-            })
-
-            forecast_plot = pd.DataFrame({
-                "Date": future_dates,
-                "Revenue": expected,
-                "Series": "Trend estimate"
-            })
-
-            chart_data = pd.concat(
-                [historical_plot, forecast_plot],
-                ignore_index=True
-            )
-
-            fig = px.line(
-                chart_data,
-                x="Date",
-                y="Revenue",
-                color="Series",
-                markers=True,
-                title="Historical Revenue and Seven-Day Outlook",
-                color_discrete_map={
-                    "Historical revenue": BLUE,
-                    "Trend estimate": GREEN
-                }
-            )
-
-            st.plotly_chart(
-                style_chart(fig),
-                use_container_width=True
-            )
-
-            forecast_table = pd.DataFrame({
-                "Date": future_dates.strftime("%d %b %Y"),
-                "Cautious (₦)": cautious,
-                "Expected (₦)": expected,
-                "Optimistic (₦)": optimistic
-            })
-
-            st.subheader("Daily Forecast")
-
-            st.dataframe(
-                forecast_table.round(2),
-                use_container_width=True,
-                hide_index=True
-            )
-
-            st.caption(
-                "Method: a simple linear trend fitted to daily "
-                "historical revenue. Cautious and optimistic "
-                "scenarios are illustrative adjustments of "
-                "±15%, not statistical confidence intervals. "
-                "Seasonality, future budgets and market changes "
-                "are not modeled. These are estimates, not guarantees."
-            )
-
-
-# =========================================================
-# DOWNLOAD ANALYZED DATA
-# =========================================================
-st.divider()
-st.subheader("Export your results")
-
-csv_data = df.to_csv(index=False).encode("utf-8")
-
-st.download_button(
-    "📥 Download analyzed results",
-    data=csv_data,
-    file_name="marketpulse_results.csv",
-    mime="text/csv"
-)
-
-st.caption(
-    "MarketPulse | Marketing intelligence for smarter decisions."
+st.markdown("---")
+
+st.markdown(
+    """
+    <div style="text-align:center; color:#94A3B8; padding:10px;">
+        MarketPulse · Marketing Analytics Dashboard
+    </div>
+    """,
+    unsafe_allow_html=True
 )
