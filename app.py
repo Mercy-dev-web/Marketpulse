@@ -347,6 +347,88 @@ def prepare_data(raw):
     return df, []
 
 
+def assess_data_quality(raw, prepared):
+    """Return transparent warnings about source data before users trust its metrics."""
+    issues = []
+
+    if raw.empty:
+        return ["The uploaded dataset has no rows."]
+
+    duplicate_rows = int(raw.duplicated().sum())
+    if duplicate_rows:
+        issues.append(
+            f"{duplicate_rows} exact duplicate row(s) found. Check whether these are repeated records before interpreting totals."
+        )
+
+    blank_cells = int(raw.isna().sum().sum())
+    blank_cells += int(raw.astype(str).apply(lambda col: col.str.strip().eq("")).sum().sum())
+    if blank_cells:
+        issues.append(
+            f"{blank_cells} blank or missing cell(s) found in the source file. Missing values may affect calculated metrics."
+        )
+
+    numeric_fields = ["Spend", "Impressions", "Clicks", "Conversions", "Revenue"]
+    canonical = {}
+    for col in raw.columns:
+        key = clean_column_name(col)
+        canonical[ALIASES.get(key, str(col).strip())] = col
+
+    for field in numeric_fields:
+        source_col = canonical.get(field)
+        if source_col is None:
+            continue
+
+        source_values = raw[source_col]
+        cleaned = (
+            source_values.astype(str)
+            .str.strip()
+            .str.replace(",", "", regex=False)
+            .str.replace("₦", "", regex=False)
+            .str.replace("$", "", regex=False)
+            .str.replace("£", "", regex=False)
+        )
+        nonblank = source_values.notna() & cleaned.ne("") & cleaned.ne("nan")
+        numeric_values = pd.to_numeric(cleaned, errors="coerce")
+        invalid_count = int((nonblank & numeric_values.isna()).sum())
+        negative_count = int((numeric_values < 0).sum())
+
+        if invalid_count:
+            issues.append(
+                f"{field} contains {invalid_count} non-numeric value(s). These are converted to zero during preparation."
+            )
+        if negative_count:
+            issues.append(
+                f"{field} contains {negative_count} negative value(s). Negative values are clipped to zero during preparation."
+            )
+
+    if "Date" in prepared.columns:
+        invalid_dates = int(prepared["Date"].isna().sum())
+        if invalid_dates:
+            issues.append(
+                f"{invalid_dates} row(s) have a missing or invalid date. Date-based analysis may exclude them."
+            )
+
+    clicks_exceed_impressions = int((prepared["Clicks"] > prepared["Impressions"]).sum())
+    if clicks_exceed_impressions:
+        issues.append(
+            f"{clicks_exceed_impressions} row(s) have more clicks than impressions. Verify the source metrics."
+        )
+
+    conversions_exceed_clicks = int((prepared["Conversions"] > prepared["Clicks"]).sum())
+    if conversions_exceed_clicks:
+        issues.append(
+            f"{conversions_exceed_clicks} row(s) have more conversions than clicks. Check metric definitions or source data."
+        )
+
+    spend_without_revenue = int(((prepared["Spend"] > 0) & (prepared["Revenue"] == 0)).sum())
+    if spend_without_revenue:
+        issues.append(
+            f"{spend_without_revenue} row(s) show ad spend but zero recorded revenue. This may be valid, but check tracking and attribution."
+        )
+
+    return list(dict.fromkeys(issues))
+
+
 # =========================================================
 # 6. CURRENCY FORMATTING
 # =========================================================
@@ -677,8 +759,11 @@ if uploaded_file is not None:
         )
         st.stop()
 else:
-    df, _ = prepare_data(create_sample_data())
+    raw_df = create_sample_data()
+    df, _ = prepare_data(raw_df)
     data_source = "Sample marketing dataset"
+
+quality_issues = assess_data_quality(raw_df, df)
 
 
 # =========================================================
@@ -687,6 +772,20 @@ else:
 show_header()
 
 st.caption(f"Data source: {data_source}")
+
+with st.expander("🔎 Data Quality Check", expanded=bool(quality_issues)):
+    if quality_issues:
+        st.warning(f"Found {len(quality_issues)} data quality item(s) to review.")
+        for issue in quality_issues:
+            st.markdown(f"- {issue}")
+        st.caption(
+            "MarketPulse applies basic cleaning so analysis can continue, but review these items before making budget decisions."
+        )
+    else:
+        st.success("No common data quality issues were detected in the current dataset.")
+        st.caption(
+            "This check covers common issues only; it does not guarantee that the source data is complete or correct."
+        )
 
 if df.empty:
     st.warning("Your dataset is empty. Upload a file with campaign records.")
