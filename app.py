@@ -1365,15 +1365,23 @@ elif page == "AI Marketing Assistant":
                                 }
                             ],
                             temperature=0.4,
-                            max_tokens=900
+                            # GPT-OSS may use tokens for reasoning before producing its final answer.
+                            # Give it enough completion budget to return visible text.
+                            max_completion_tokens=2048
                         )
 
-                    answer = completion.choices[0].message.content
-                    if answer:
+                    choice = completion.choices[0] if completion.choices else None
+                    answer = choice.message.content if choice and choice.message else None
+                    if isinstance(answer, str) and answer.strip():
                         st.markdown("### AI's Analysis")
-                        st.markdown(answer)
+                        st.markdown(answer.strip())
                     else:
-                        st.warning("The assistant returned an empty response. Please try again.")
+                        finish_reason = getattr(choice, "finish_reason", None) if choice else None
+                        st.warning(
+                            "Groq completed the request but returned no final answer text. "
+                            "Try again, or shorten the uploaded dataset if it contains many rows. "
+                            + (f"Response status: {finish_reason}." if finish_reason else "")
+                        )
                 except Exception as exc:
                     st.error(
                         "MarketPulse couldn't get a response from Groq. Check that your API key "
