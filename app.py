@@ -1263,8 +1263,23 @@ elif page == "AI Marketing Assistant":
         key="ai_marketing_question"
     )
 
-    if st.button("Ask MarketPulse AI", use_container_width=True):
-        if not question.strip():
+    ask_col, plan_col = st.columns(2)
+    ask_clicked = ask_col.button("Ask MarketPulse AI", use_container_width=True)
+    plan_clicked = plan_col.button("Generate Campaign Action Plan", use_container_width=True)
+
+    action_plan_prompt = (
+        "Create a prioritized campaign action plan from the supplied metrics. "
+        "Start with a brief overall diagnosis, then give up to three actions ranked by priority. "
+        "For each action, state the campaign or channel, the exact metric evidence, what to investigate "
+        "or test, and what success metric to monitor. Separate observed facts from hypotheses. "
+        "Do not automatically recommend increasing or pausing spend based on ROAS alone. "
+        "Mention missing information that could change the recommendation, and finish with one "
+        "practical next step the business can take this week."
+    )
+    active_question = action_plan_prompt if plan_clicked else question.strip()
+
+    if ask_clicked or plan_clicked:
+        if not active_question:
             st.warning("Type a question first so the assistant knows what to help with.")
         else:
             try:
@@ -1303,7 +1318,7 @@ elif page == "AI Marketing Assistant":
                                         "Here are the aggregated metrics from my current MarketPulse dataset:\n"
                                         + json.dumps(dataset_context, ensure_ascii=False, default=str)
                                         + "\n\nMy question: "
-                                        + question.strip()
+                                        + active_question
                                     )
                                 }
                             ],
