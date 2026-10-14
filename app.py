@@ -107,17 +107,26 @@ st.markdown(
     }}
 
     div.stButton > button {{
-        background-color: {GREEN};
-        color: {NAVY};
-        border: none;
+        background-color: {GREEN} !important;
+        color: {NAVY} !important;
+        -webkit-text-fill-color: {NAVY} !important;
+        border: 1px solid {GREEN} !important;
         border-radius: 8px;
-        font-weight: 700;
+        font-weight: 800;
+    }}
+
+    div.stButton > button p,
+    div.stButton > button span,
+    div.stButton > button div {{
+        color: {NAVY} !important;
+        -webkit-text-fill-color: {NAVY} !important;
     }}
 
     div.stButton > button:hover {{
-        background-color: #D0FF7A;
-        color: {NAVY};
-        border: none;
+        background-color: #D0FF7A !important;
+        color: {NAVY} !important;
+        -webkit-text-fill-color: {NAVY} !important;
+        border: 1px solid #D0FF7A !important;
     }}
 
     [data-testid="stDataFrame"] {{
