@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import json
+from groq import Groq
 from datetime import date, timedelta
 
 # =========================================================
@@ -607,6 +609,7 @@ with st.sidebar:
             "Marketing Insights",
             "Budget Planner",
             "FutureCast",
+            "AI Marketing Assistant",
             "Export Results"
         ],
         index=0
@@ -1155,7 +1158,166 @@ elif page == "FutureCast":
 
 
 # =========================================================
-# 18. EXPORT RESULTS
+# 18. AI MARKETING ASSISTANT
+# =========================================================
+elif page == "AI Marketing Assistant":
+    section_intro(
+        "AI Marketing Assistant",
+        "Ask questions about your campaign performance and get practical recommendations grounded in your data."
+    )
+
+    st.markdown(
+        """
+        <div class="section-card">
+            <strong>Meet your marketing copilot</strong><br>
+            Ask about campaign performance, channel allocation, weak results,
+            or what to test next. The assistant uses the aggregated metrics
+            from the dataset currently loaded in MarketPulse.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.caption(
+        "Privacy note: your question and aggregated campaign/channel metrics "
+        "are sent to Groq to generate a response. Avoid uploading confidential "
+        "or personally identifying information."
+    )
+
+    campaign_summary = (
+        df.groupby("Campaign", as_index=False)
+        .agg({
+            "Spend": "sum",
+            "Revenue": "sum",
+            "Impressions": "sum",
+            "Clicks": "sum",
+            "Conversions": "sum"
+        })
+    )
+    campaign_summary["ROAS"] = np.where(
+        campaign_summary["Spend"] > 0,
+        campaign_summary["Revenue"] / campaign_summary["Spend"],
+        0
+    )
+    campaign_summary["CTR (%)"] = np.where(
+        campaign_summary["Impressions"] > 0,
+        campaign_summary["Clicks"] / campaign_summary["Impressions"] * 100,
+        0
+    )
+    campaign_summary["Conversion Rate (%)"] = np.where(
+        campaign_summary["Clicks"] > 0,
+        campaign_summary["Conversions"] / campaign_summary["Clicks"] * 100,
+        0
+    )
+
+    channel_summary = (
+        df.groupby("Channel", as_index=False)
+        .agg({
+            "Spend": "sum",
+            "Revenue": "sum",
+            "Clicks": "sum",
+            "Conversions": "sum"
+        })
+    )
+    channel_summary["ROAS"] = np.where(
+        channel_summary["Spend"] > 0,
+        channel_summary["Revenue"] / channel_summary["Spend"],
+        0
+    )
+
+    total_spend = float(df["Spend"].sum())
+    total_revenue = float(df["Revenue"].sum())
+    total_conversions = float(df["Conversions"].sum())
+    total_clicks = float(df["Clicks"].sum())
+    total_impressions = float(df["Impressions"].sum())
+
+    dataset_context = {
+        "data_source": data_source,
+        "campaign_count": int(df["Campaign"].nunique()),
+        "channel_count": int(df["Channel"].nunique()),
+        "total_spend_ngn": round(total_spend, 2),
+        "total_revenue_ngn": round(total_revenue, 2),
+        "overall_roas": round(total_revenue / total_spend, 2) if total_spend else 0,
+        "overall_ctr_percent": round(total_clicks / total_impressions * 100, 2) if total_impressions else 0,
+        "total_conversions": round(total_conversions, 2),
+        "campaign_metrics": campaign_summary.round(2).to_dict(orient="records"),
+        "channel_metrics": channel_summary.round(2).to_dict(orient="records")
+    }
+
+    with st.expander("View the summary the assistant uses"):
+        st.json(dataset_context)
+
+    question = st.text_area(
+        "What would you like to know?",
+        placeholder="e.g. Which campaign should I investigate first, and why?",
+        height=110,
+        key="ai_marketing_question"
+    )
+
+    if st.button("Ask MarketPulse AI", use_container_width=True):
+        if not question.strip():
+            st.warning("Type a question first so the assistant knows what to help with.")
+        else:
+            try:
+                api_key = st.secrets.get("GROQ_API_KEY", "")
+            except Exception:
+                api_key = ""
+
+            if not api_key:
+                st.error(
+                    "The Groq API key is not configured. Add GROQ_API_KEY in "
+                    "your Streamlit app's Settings → Secrets, then restart the app."
+                )
+            else:
+                try:
+                    client = Groq(api_key=api_key)
+                    with st.spinner("Reviewing your campaign data..."):
+                        completion = client.chat.completions.create(
+                            model="openai/gpt-oss-20b",
+                            messages=[
+                                {
+                                    "role": "system",
+                                    "content": (
+                                        "You are MarketPulse AI, a practical marketing analytics assistant. "
+                                        "Answer in clear, friendly language. Use the supplied campaign metrics "
+                                        "as your evidence. Never invent missing figures. Explain what the data "
+                                        "shows versus what is only a hypothesis. Give up to three specific next "
+                                        "steps when useful. ROAS is revenue divided by ad spend and is not profit. "
+                                        "Do not claim correlation proves causation. If the data is insufficient, "
+                                        "say what additional data would help. Format answers with short headings "
+                                        "or bullets where useful."
+                                    )
+                                },
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        "Here are the aggregated metrics from my current MarketPulse dataset:\n"
+                                        + json.dumps(dataset_context, ensure_ascii=False, default=str)
+                                        + "\n\nMy question: "
+                                        + question.strip()
+                                    )
+                                }
+                            ],
+                            temperature=0.4,
+                            max_tokens=900
+                        )
+
+                    answer = completion.choices[0].message.content
+                    if answer:
+                        st.markdown("### AI's Analysis")
+                        st.markdown(answer)
+                    else:
+                        st.warning("The assistant returned an empty response. Please try again.")
+                except Exception as exc:
+                    st.error(
+                        "MarketPulse couldn't get a response from Groq. Check that your API key "
+                        "is valid and active, then try again. Technical details: "
+                        + str(exc)
+                    )
+
+
+# =========================================================
+# 19. EXPORT RESULTS
 # =========================================================
 elif page == "Export Results":
     section_intro(
@@ -1192,7 +1354,7 @@ elif page == "Export Results":
 
 
 # =========================================================
-# 19. FOOTER
+# 20. FOOTER
 # =========================================================
 st.markdown("---")
 
