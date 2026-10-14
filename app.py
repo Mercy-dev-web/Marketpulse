@@ -1310,8 +1310,14 @@ elif page == "AI Marketing Assistant":
     # Deterministic validation: calculate comparisons and campaign shares in Python,
     # rather than relying on the language model to do arithmetic.
     overall_roas = dataset_context["overall_roas"]
-    channel_validation = channel_summary[["Channel", "ROAS"]].copy()
+    channel_validation = channel_summary[["Channel", "Spend", "Revenue", "ROAS"]].copy()
     channel_validation["below_overall_roas"] = channel_validation["ROAS"] < overall_roas
+    channel_validation["spend_share_percent"] = np.where(
+        total_spend > 0, channel_validation["Spend"] / total_spend * 100, 0
+    )
+    channel_validation["revenue_share_percent"] = np.where(
+        total_revenue > 0, channel_validation["Revenue"] / total_revenue * 100, 0
+    )
     campaign_validation = campaign_summary[["Campaign", "Spend", "Revenue", "ROAS"]].copy()
     campaign_validation["spend_share_percent"] = np.where(
         total_spend > 0, campaign_validation["Spend"] / total_spend * 100, 0
@@ -1324,6 +1330,7 @@ elif page == "AI Marketing Assistant":
         "channels_below_overall_roas": channel_validation.loc[
             channel_validation["below_overall_roas"], "Channel"
         ].tolist(),
+        "channel_share_metrics": channel_validation.round(2).to_dict(orient="records"),
         "campaign_share_metrics": campaign_validation.round(2).to_dict(orient="records")
     }
 
@@ -1401,19 +1408,20 @@ elif page == "AI Marketing Assistant":
                                         "or bullets where useful. "
                                         "NUMERICAL VALIDATION RULES: Treat supplied dataset metrics and validation_checks "
                                         "as authoritative. Do not invent, estimate, or silently recompute individual "
-                                        "channel or campaign metrics. For any combined channel or campaign share, "
-                                        "identify each requested entity, use its supplied spend_share_percent and "
-                                        "revenue_share_percent values, and sum those values carefully. Verify the "
-                                        "arithmetic before stating the total. Never substitute a subset of the named "
-                                        "entities or confuse spend share with revenue share. If the required share "
-                                        "values are not supplied, say the combined share cannot be verified from the "
-                                        "available summary. State whether totals are approximate sums of rounded "
-                                        "values. Before finalizing, cross-check every percentage against the supplied "
-                                        "values and ensure the sum is arithmetically consistent. A channel is below "
-                                        "overall ROAS only when below_overall_roas is true. If a requested combined "
-                                        "total conflicts with the supplied values, do not report the conflicting "
-                                        "total; explain the limitation. If an entity is missing, say so. "
-                                        "Never say a value is above another unless its numerical value is greater."
+                                        "channel or campaign metrics. For combined channel shares, use channel_share_metrics; "
+                                        "for combined campaign shares, use campaign_share_metrics. Identify every named "
+                                        "entity and sum its supplied spend_share_percent and revenue_share_percent values "
+                                        "separately. Verify the arithmetic before stating totals. Never omit a named "
+                                        "entity or confuse spend share with revenue share. If a required entity or share "
+                                        "is missing, say the combined total cannot be verified. Because shares are rounded "
+                                        "to two decimals, label their sums approximate. Cross-check every reported total "
+                                        "against the supplied values. A channel is below overall ROAS only when "
+                                        "below_overall_roas is true. ROAS is revenue divided by ad spend, not profit; "
+                                        "do not call a channel or campaign profitable unless profit or margin data "
+                                        "supports that conclusion. Do not state conversion rates, average order values, "
+                                        "repeat purchase rates, or other metrics unless they are explicitly supplied. "
+                                        "If an entity is missing, say so. Never say a value is above another unless "
+                                        "its numerical value is greater."
                                     )
                                 },
                                 {
