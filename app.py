@@ -7,7 +7,7 @@ import json
 from groq import Groq
 from datetime import date, timedelta
 
-# 1. PAGE CONFIGURATION
+# Page configuration
 st.set_page_config(
     page_title="MarketPulse | Marketing Analytics",
     page_icon="📊",
@@ -21,7 +21,7 @@ GREEN = "#B7FF3C"
 MUTED = "#94A3B8"
 WHITE = "#F8FAFC"
 
-# 2. CUSTOM STYLING
+# Custom styling
 st.markdown(
     f"""
     <style>
@@ -134,7 +134,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 3. BRAND HEADER
+# Brand header
 def show_header():
     st.markdown(
         """
@@ -150,7 +150,7 @@ def section_intro(title, description):
     st.title(title)
     st.caption(description)
 
-# 4. SAMPLE DATA
+# Sample data
 @st.cache_data
 def create_sample_data():
     rng = np.random.default_rng(42)
@@ -203,7 +203,7 @@ def create_sample_data():
 
     return pd.DataFrame(rows)
 
-# 5. DATA CLEANING AND COLUMN MAPPING
+# Data cleaning and column mapping
 ALIASES = {
     "campaign": "Campaign",
     "campaign name": "Campaign",
@@ -412,14 +412,14 @@ def assess_data_quality(raw, prepared):
 
     return list(dict.fromkeys(issues))
 
-# 6. CURRENCY FORMATTING
+# Currency formatting
 def money(value):
     return f"₦{value:,.0f}"
 
 def money_decimal(value):
     return f"₦{value:,.2f}"
 
-# 7. REUSABLE KPI CARDS
+# Reusable KPI cards
 def show_kpis(df):
     total_spend = df["Spend"].sum()
     total_revenue = df["Revenue"].sum()
@@ -456,7 +456,7 @@ def show_kpis(df):
     c7.metric("Overall CTR", f"{overall_ctr:.2f}%")
     c8.metric("Cost per Conversion", money_decimal(overall_cpa))
 
-# 8. CHART HELPERS
+# Chart helpers
 def apply_chart_theme(fig, height=360):
     fig.update_layout(
         height=height,
@@ -540,7 +540,7 @@ def show_performance_charts(df):
             use_container_width=True
         )
 
-# 9. SMART MARKETING INSIGHTS
+# Smart marketing insights
 def show_insights(df):
     st.subheader("What your marketing data is saying")
 
@@ -652,7 +652,7 @@ def show_insights(df):
         "by itself measure profit."
     )
 
-# 10. SIDEBAR NAVIGATION AND DATA UPLOAD
+# Sidebar navigation and data upload
 with st.sidebar:
     st.markdown("## MarketPulse")
     st.caption("Marketing intelligence dashboard")
@@ -692,7 +692,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption("MarketPulse • Marketing Analytics")
 
-# 11. LOAD AND VALIDATE DATA
+# Load and validate data
 if uploaded_file is not None:
     try:
         if uploaded_file.name.lower().endswith(".csv"):
@@ -729,7 +729,7 @@ else:
 
 quality_issues = assess_data_quality(raw_df, df)
 
-# 12. PAGE HEADER
+# Page header
 show_header()
 
 st.caption(f"Data source: {data_source}")
@@ -752,7 +752,7 @@ if df.empty:
     st.warning("Your dataset is empty. Upload a file with campaign records.")
     st.stop()
 
-# 13. OVERVIEW
+# Overview
 if page == "Overview":
     section_intro(
         "Overview",
@@ -810,7 +810,7 @@ if page == "Overview":
         hide_index=True
     )
 
-# 14. CAMPAIGN ANALYTICS
+# Campaign analytics
 elif page == "Campaign Analytics":
     section_intro(
         "Campaign Analytics",
@@ -904,7 +904,7 @@ elif page == "Campaign Analytics":
         hide_index=True
     )
 
-# 15. MARKETING INSIGHTS
+# Marketing insights
 elif page == "Marketing Insights":
     section_intro(
         "Marketing Insights",
@@ -953,7 +953,7 @@ elif page == "Marketing Insights":
         use_container_width=True
     )
 
-# 16. BUDGET PLANNER
+# Budget planner
 elif page == "Budget Planner":
     section_intro(
         "Budget Planner",
@@ -1081,7 +1081,7 @@ elif page == "Budget Planner":
         use_container_width=True
     )
 
-# 17. FUTURECAST
+# FutureCast
 elif page == "FutureCast":
     section_intro(
         "FutureCast",
@@ -1210,7 +1210,7 @@ elif page == "FutureCast":
                     "illustrative baseline, not a reliable prediction."
                 )
 
-# 18. AI MARKETING ASSISTANT
+# AI marketing assistant
 elif page == "AI Marketing Assistant":
     section_intro(
         "AI Marketing Assistant",
@@ -1381,7 +1381,7 @@ elif page == "AI Marketing Assistant":
                         + str(exc)
                     )
 
-# 19. EXPORT RESULTS
+# Export results
 elif page == "Export Results":
     section_intro(
         "Export Results",
@@ -1415,7 +1415,7 @@ elif page == "Export Results":
         "calculated performance metrics."
     )
 
-# 20. FOOTER
+# Footer
 st.markdown("---")
 
 st.markdown(
