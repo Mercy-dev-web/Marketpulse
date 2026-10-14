@@ -1278,6 +1278,18 @@ elif page == "AI Marketing Assistant":
 
     total_spend = float(df["Spend"].sum())
     total_revenue = float(df["Revenue"].sum())
+
+    # Calculate channel shares in Python so the model does not have to estimate them.
+    channel_summary["Spend Share (%)"] = np.where(
+        total_spend > 0,
+        channel_summary["Spend"] / total_spend * 100,
+        0
+    )
+    channel_summary["Revenue Share (%)"] = np.where(
+        total_revenue > 0,
+        channel_summary["Revenue"] / total_revenue * 100,
+        0
+    )
     total_conversions = float(df["Conversions"].sum())
     total_clicks = float(df["Clicks"].sum())
     total_impressions = float(df["Impressions"].sum())
@@ -1310,13 +1322,19 @@ elif page == "AI Marketing Assistant":
     plan_clicked = plan_col.button("Generate Campaign Action Plan", use_container_width=True)
 
     action_plan_prompt = (
-        "Create a prioritized campaign action plan from the supplied metrics. "
-        "Start with a brief overall diagnosis, then give up to three actions ranked by priority. "
-        "For each action, state the campaign or channel, the exact metric evidence, what to investigate "
-        "or test, and what success metric to monitor. Separate observed facts from hypotheses. "
-        "Do not automatically recommend increasing or pausing spend based on ROAS alone. "
-        "Mention missing information that could change the recommendation, and finish with one "
-        "practical next step the business can take this week."
+        "Create a concise, prioritized campaign action plan using only the supplied metrics. "
+        "Start with a brief diagnosis, then give up to three actions ranked by priority. "
+        "For every action, name the campaign or channel, quote exact supplied metric values, "
+        "suggest one investigation or test, and name a measurable success metric. "
+        "IMPORTANT ACCURACY RULES: do not calculate or guess total percentages yourself; use the "
+        "provided Spend Share (%) and Revenue Share (%) values for channel shares. Never claim a "
+        "channel accounts for a percentage of spend or revenue unless that exact share is supplied. "
+        "Do not invent ROAS, spend, revenue, conversion counts, targets, or missing values. "
+        "If suggesting a target such as a ROAS threshold, label it as a proposed test target, not "
+        "a fact or universal benchmark. Do not automatically recommend scaling or cutting spend "
+        "based on ROAS alone; note that margin, attribution quality, and other costs may matter. "
+        "Keep the plan complete and concise, avoid tables if they risk truncation, and finish with "
+        "one practical next step for this week."
     )
     active_question = action_plan_prompt if plan_clicked else question.strip()
 
@@ -1367,7 +1385,7 @@ elif page == "AI Marketing Assistant":
                             temperature=0.4,
                             # GPT-OSS may use tokens for reasoning before producing its final answer.
                             # Give it enough completion budget to return visible text.
-                            max_completion_tokens=2048
+                            max_completion_tokens=3072
                         )
 
                     choice = completion.choices[0] if completion.choices else None
