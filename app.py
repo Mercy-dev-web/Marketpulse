@@ -1307,6 +1307,26 @@ elif page == "AI Marketing Assistant":
         "channel_metrics": channel_summary.round(2).to_dict(orient="records")
     }
 
+    # Deterministic validation: calculate comparisons and campaign shares in Python,
+    # rather than relying on the language model to do arithmetic.
+    overall_roas = dataset_context["overall_roas"]
+    channel_validation = channel_summary[["Channel", "ROAS"]].copy()
+    channel_validation["below_overall_roas"] = channel_validation["ROAS"] < overall_roas
+    campaign_validation = campaign_summary[["Campaign", "Spend", "Revenue", "ROAS"]].copy()
+    campaign_validation["spend_share_percent"] = np.where(
+        total_spend > 0, campaign_validation["Spend"] / total_spend * 100, 0
+    )
+    campaign_validation["revenue_share_percent"] = np.where(
+        total_revenue > 0, campaign_validation["Revenue"] / total_revenue * 100, 0
+    )
+    dataset_context["validation_checks"] = {
+        "overall_roas": overall_roas,
+        "channels_below_overall_roas": channel_validation.loc[
+            channel_validation["below_overall_roas"], "Channel"
+        ].tolist(),
+        "campaign_share_metrics": campaign_validation.round(2).to_dict(orient="records")
+    }
+
     with st.expander("View the summary the assistant uses"):
         st.json(dataset_context)
 
@@ -1369,7 +1389,15 @@ elif page == "AI Marketing Assistant":
                                         "steps when useful. ROAS is revenue divided by ad spend and is not profit. "
                                         "Do not claim correlation proves causation. If the data is insufficient, "
                                         "say what additional data would help. Format answers with short headings "
-                                        "or bullets where useful."
+                                        "or bullets where useful. "
+                                        "NUMERICAL VALIDATION RULES: Use validation_checks supplied in the dataset "
+                                        "as the authoritative source for channel comparisons and campaign spend/revenue "
+                                        "shares. Do not recompute those values or contradict them. A channel is below "
+                                        "overall ROAS only when below_overall_roas is true. When asked for combined "
+                                        "shares, add the precomputed spend_share_percent and revenue_share_percent "
+                                        "for the named campaigns, and state that the result is an approximate sum "
+                                        "of rounded values. If a required campaign or channel is not present, say so. "
+                                        "Never say a value is above another unless its numerical value is greater."
                                     )
                                 },
                                 {
